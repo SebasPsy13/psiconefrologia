@@ -9,7 +9,6 @@ import json
 import streamlit as st
 from datetime import datetime
 import streamlit as st
-import matplotlib.pyplot as plt
 import io
 
 # =========================================================
@@ -915,56 +914,56 @@ elif modulo == "📂 Historia Clínica":
                 st.markdown(f"<p style='color: #00A896; font-size: 18px; font-weight: 600;'>DNI: {dni_p} | Servicio: {p.get('servicio', 'N/A')}</p>", unsafe_allow_html=True)
             with c_header2:
                 st.markdown("<br>", unsafe_allow_html=True)
-                
-              # --- LÓGICA FUNCIONAL DE EXPORTACIÓN PDF ---
+
+                # --- LÓGICA FUNCIONAL DE EXPORTACIÓN PDF ---
                 if not f_db.empty:
                     pdf_key = f"pdf_historial_{dni_p}"
-    
-    # Este es el 'if' principal de este bloque
-                if st.session_state.get(pdf_key) is None:
-                    if st.button("📄 Preparar PDF", use_container_width=True):
-                        with st.spinner("Procesando expediente clínico..."):
-                            try:
-                                datos_pdf = json.loads(f_db.iloc[0]['datos_json'])
-                                df_mon_pdf = pd.DataFrame(datos_pdf.get('monitoreo', {}))
-                                
-                                # Generación del gráfico con Matplotlib
-                                fig_mtp, ax = plt.subplots(figsize=(8, 5))
-                                for area in df_mon_pdf['Área'].unique():
-                                    df_area = df_mon_pdf[df_mon_pdf['Área'] == area]
-                                    sesiones = df_mon_pdf.columns[1:]
-                                    puntajes = df_area.iloc[0, 1:].values
-                                    ax.plot(sesiones, puntajes, marker='o', label=area)
-                                
-                                ax.set_title("Evolución de Puntajes por Área")
-                                ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
-                                plt.tight_layout()
-            
-                                # Guardado en buffer de memoria
-                                img_buf = io.BytesIO()
-                                plt.savefig(img_buf, format='png', dpi=150)
-                                plt.close(fig_mtp)
-                                img_buf.seek(0)
-                                
-                                # Generar PDF y guardar en sesión
-                                st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, img_buf)
-                                st.rerun()
-            
-                            except Exception as e:
-                                st.error(f"Error en la generación: {e}")
                     
-    # LÍNEA 981: Este 'else' debe estar alineado con 'if st.session_state.get(pdf_key) is None:'
-                else:
-                    st.download_button(
-                        label="📥 Descargar Reporte de Psiconefrología",
-                        data=st.session_state[pdf_key],
-                        file_name=f"Reporte_{dni_p}.pdf",
-                        mime="application/pdf",
-                        use_container_width=True
-                    )
-                    if st.button("🔄 Generar uno nuevo"):
-                        st.session_state[pdf_key] = None
-                        st.rerun()
+                    # Este es el 'if' principal de este bloque
+                    if st.session_state.get(pdf_key) is None:
+                        if st.button("📄 Preparar PDF", use_container_width=True):
+                            with st.spinner("Procesando expediente clínico..."):
+                                try:
+                                    datos_pdf = json.loads(f_db.iloc[0]['datos_json'])
+                                    df_mon_pdf = pd.DataFrame(datos_pdf.get('monitoreo', {}))
+                                    
+                                    # Generación del gráfico con Matplotlib
+                                    fig_mtp, ax = plt.subplots(figsize=(8, 5))
+                                    for area in df_mon_pdf['Área'].unique():
+                                        df_area = df_mon_pdf[df_mon_pdf['Área'] == area]
+                                        sesiones = df_mon_pdf.columns[1:]
+                                        puntajes = df_area.iloc[0, 1:].values
+                                        ax.plot(sesiones, puntajes, marker='o', label=area)
+                                    
+                                    ax.set_title("Evolución de Puntajes por Área")
+                                    ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
+                                    plt.tight_layout()
+
+                                    # Guardado en buffer de memoria
+                                    img_buf = io.BytesIO()
+                                    plt.savefig(img_buf, format='png', dpi=150)
+                                    plt.close(fig_mtp)
+                                    img_buf.seek(0)
+                                    
+                                    # Generar PDF y guardar en sesión
+                                    st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, img_buf)
+                                    st.rerun()
+
+                                except Exception as e:
+                                    st.error(f"Error en la generación: {e}")
+                                    
+                    # LÍNEA 981: Este 'else' debe estar alineado con 'if st.session_state.get(pdf_key) is None:'
+                    else:
+                        st.download_button(
+                            label="📥 Descargar Reporte de Psiconefrología",
+                            data=st.session_state[pdf_key],
+                            file_name=f"Reporte_{dni_p}.pdf",
+                            mime="application/pdf",
+                            use_container_width=True
+                        )
+                        if st.button("🔄 Generar uno nuevo"):
+                            st.session_state[pdf_key] = None
+                            st.rerun()
                     
                     # 2. Si ya se generó, mostramos el botón de descarga Teal
                     else:
@@ -976,8 +975,8 @@ elif modulo == "📂 Historia Clínica":
                             use_container_width=True,
                             type="primary"
                         )
-                    else:
-                        st.button("📄 PDF No Disponible", disabled=True, use_container_width=True, help="El paciente no tiene una ficha virtual completada.")
+                else:
+                    st.button("📄 PDF No Disponible", disabled=True, use_container_width=True, help="El paciente no tiene una ficha virtual completada.")
 
         # --- PESTAÑAS ESTILO PINHOME ---
         tab_fil, tab_dipac, tab_mental, tab_mon, tab_evo = st.tabs([
