@@ -932,7 +932,10 @@ elif modulo == "📂 Historia Clínica":
                                                  color_discrete_sequence=["#FF4B4B", "#1C83E1", "#00C781", "#FFAA00"])
                                 
                                 img_path = f"temp_hist_{dni_p}.png"
-                                fig_pdf.write_image(img_path)
+                                try:
+                                    img_bytes = fig_pdf.to_image(format="png", engine="kaleido")
+                                except Exception as e:
+                                    st.error(f"Error al generar imagen del gráfico: {e}")
                                 
                                 # Generamos y guardamos el PDF en memoria
                                 st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, img_path)
