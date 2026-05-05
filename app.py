@@ -976,8 +976,8 @@ elif modulo == "📂 Historia Clínica":
                             use_container_width=True,
                             type="primary"
                         )
-                else:
-                    st.button("📄 PDF No Disponible", disabled=True, use_container_width=True, help="El paciente no tiene una ficha virtual completada.")
+                    else:
+                        st.button("📄 PDF No Disponible", disabled=True, use_container_width=True, help="El paciente no tiene una ficha virtual completada.")
 
         # --- PESTAÑAS ESTILO PINHOME ---
         tab_fil, tab_dipac, tab_mental, tab_mon, tab_evo = st.tabs([
