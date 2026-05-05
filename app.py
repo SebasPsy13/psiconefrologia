@@ -965,16 +965,16 @@ elif modulo == "📂 Historia Clínica":
                             st.session_state[pdf_key] = None
                             st.rerun()
                     
-                    # 2. Si ya se generó, mostramos el botón de descarga Teal
-                    else:
-                        st.download_button(
-                            label="📥 DESCARGAR PDF",
-                            data=bytes(st.session_state[pdf_key]),
-                            file_name=f"Expediente_{dni_p}.pdf",
-                            mime="application/pdf",
-                            use_container_width=True,
-                            type="primary"
-                        )
+                # 2. Si ya se generó, mostramos el botón de descarga Teal
+                else:
+                    st.download_button(
+                        label="📥 DESCARGAR PDF",
+                        data=bytes(st.session_state[pdf_key]),
+                        file_name=f"Expediente_{dni_p}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True,
+                        type="primary"
+                    )
                 else:
                     st.button("📄 PDF No Disponible", disabled=True, use_container_width=True, help="El paciente no tiene una ficha virtual completada.")
 
