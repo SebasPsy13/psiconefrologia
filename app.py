@@ -933,9 +933,15 @@ elif modulo == "📂 Historia Clínica":
                                 
                                 img_path = f"temp_hist_{dni_p}.png"
                                 try:
+    # Intentamos generar la imagen en memoria
                                     img_bytes = fig_pdf.to_image(format="png", engine="kaleido")
+    
+    # Pasamos los bytes directamente a la función del PDF
+                                    st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, img_bytes)
                                 except Exception as e:
-                                    st.error(f"Error al generar imagen del gráfico: {e}")
+                                    st.error(f"No se pudo generar el gráfico para el PDF. Error técnico: {e}")
+    # Opcional: generar el PDF sin el gráfico para que al menos descargue algo
+                                st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, None)
                                 
                                 # Generamos y guardamos el PDF en memoria
                                 st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, img_path)
