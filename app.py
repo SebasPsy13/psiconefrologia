@@ -916,49 +916,66 @@ elif modulo == "📂 Historia Clínica":
             with c_header2:
                 st.markdown("<br>", unsafe_allow_html=True)
                 
-                # --- LÓGICA FUNCIONAL DE EXPORTACIÓN PDF ---
-                if not f_db.empty:
-                    pdf_key = f"pdf_historial_{dni_p}"
+               # --- LÓGICA FUNCIONAL DE EXPORTACIÓN PDF (VERSIÓN MEMORIA) ---
+if not f_db.empty:
+    pdf_key = f"pdf_historial_{dni_p}"
+    
+    # 1. Si no se ha generado el PDF en la sesión, mostramos el botón de preparar
+    if st.session_state.get(pdf_key) is None:
+        if st.button("📄 Preparar PDF", use_container_width=True):
+            with st.spinner("Procesando expediente clínico..."):
+                try:
+                    # Extraemos los datos
+                    datos_pdf = json.loads(f_db.iloc[0]['datos_json'])
+                    df_mon_pdf = pd.DataFrame(datos_pdf.get('monitoreo', {}))
                     
-                    # 1. Si no se ha generado, mostramos el botón de preparar
-                    if st.session_state.get(pdf_key) is None:
-                        if st.button("📄 Preparar PDF", use_container_width=True):
-                            with st.spinner("Procesando expediente..."):
-                                datos_pdf = json.loads(f_db.iloc[0]['datos_json'])
-                                
-                                # Recreamos el gráfico silenciosamente para el PDF
-                                df_mon_pdf = pd.DataFrame(datos_pdf.get('monitoreo', {}))
-                                df_plot_pdf = df_mon_pdf.melt(id_vars='Área', var_name='Sesión', value_name='Puntaje')
-                                fig_pdf = px.line(df_plot_pdf, x='Sesión', y='Puntaje', color='Área', markers=True,
-                                                 color_discrete_sequence=["#FF4B4B", "#1C83E1", "#00C781", "#FFAA00"])
-                                
-                                img_path = f"temp_hist_{dni_p}.png"
-                                try:
-    # Creamos un gráfico idéntico pero en Matplotlib
-                                    fig_mtp, ax = plt.subplots(figsize=(6, 4))
-    # Ejemplo: ax.bar(datos_x, datos_y, color='skyblue')
-    # Aquí replica la lógica de tu histograma/gráfico con ax.bar o ax.plot
-                                    ax.set_title("Resultados de Evaluación")
+                    # --- CREACIÓN DEL GRÁFICO CON MATPLOTLIB (SOPORTA LINUX/NUBE) ---
+                    fig_mtp, ax = plt.subplots(figsize=(8, 5))
+                    
+                    # Iteramos por cada área para recrear las líneas del gráfico
+                    for area in df_mon_pdf['Área'].unique():
+                        df_area = df_mon_pdf[df_mon_pdf['Área'] == area]
+                        # Transformamos columnas de sesión en puntos X e Y
+                        sesiones = df_mon_pdf.columns[1:] # Saltamos la columna 'Área'
+                        puntajes = df_area.iloc[0, 1:].values
+                        ax.plot(sesiones, puntajes, marker='o', label=area)
+
+                    ax.set_title("Evolución de Puntajes por Área", fontsize=12, pad=15)
+                    ax.set_xlabel("Sesión")
+                    ax.set_ylabel("Puntaje")
+                    ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
+                    ax.grid(True, linestyle='--', alpha=0.6)
+                    plt.tight_layout()
+
+                    # --- GUARDADO EN BUFFER (SIN DISCO) ---
+                    img_buf = io.BytesIO()
+                    plt.savefig(img_buf, format='png', dpi=150)
+                    plt.close(fig_mtp)
+                    img_buf.seek(0)
+                    
+                    # 2. Generamos el PDF pasando el BUFFER directamente
+                    # IMPORTANTE: Asegúrate que logic.generar_pdf_ficha acepte bytes en el parámetro del gráfico
+                    pdf_bytes = logic.generar_pdf_ficha(p, datos_pdf, img_buf)
+                    
+                    # Guardamos el resultado final en el session_state
+                    st.session_state[pdf_key] = pdf_bytes
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"Error crítico en la generación del reporte: {e}")
     
-    # Guardamos en un buffer de memoria (no en disco)
-                                    img_buf = io.BytesIO()
-                                    plt.savefig(img_buf, format='png', bbox_inches='tight')
-                                    plt.close(fig_mtp)
-                                    img_buf.seek(0)
-    
-    # Pasamos los bytes al generador de PDF
-                                    st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, img_buf)
-    
-                                except Exception as e:
-                                    st.error(f"Error al generar gráfico estático: {e}")
-                                    st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, None)
-                                
-                                # Generamos y guardamos el PDF en memoria
-                                st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, img_path)
-                                
-                                if os.path.exists(img_path): 
-                                    os.remove(img_path)
-                                st.rerun()
+    # 3. Si el PDF ya existe en memoria, mostramos el botón de descarga real
+    else:
+        st.download_button(
+            label="📥 Descargar Reporte de Psiconefrología",
+            data=st.session_state[pdf_key],
+            file_name=f"Reporte_{dni_p}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+        if st.button("🔄 Generar uno nuevo", type="secondary"):
+            st.session_state[pdf_key] = None
+            st.rerun()
                     
                     # 2. Si ya se generó, mostramos el botón de descarga Teal
                     else:
