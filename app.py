@@ -6,10 +6,8 @@ import database as db
 import logic
 import os 
 import json
-import streamlit as st
-from datetime import datetime
-import streamlit as st
 import io
+import matplotlib.pyplot as plt
 
 # =========================================================
 # CONTROL DE ACCESO (SEGURIDAD INICIAL)
@@ -177,7 +175,6 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- INICIALIZACIÓN ---
-st.set_page_config(page_title="Agenda Psiconefrología", layout="wide")
 db.create_tables()
 
 # --- FUNCIONES DE SOPORTE ---
@@ -916,86 +913,130 @@ elif modulo == "📂 Historia Clínica":
                 st.markdown("<br>", unsafe_allow_html=True)
 
                 # --- 1. LÓGICA DE EXPORTACIÓN PDF (MEMORIA & MATPLOTLIB) ---
-if not f_db.empty:
-    pdf_key = f"pdf_historial_{dni_p}"
-    
-    # Verificamos si ya existe el PDF en la sesión para no procesar doble
-    if st.session_state.get(pdf_key) is None:
-        if st.button("📄 Preparar PDF de Ficha Clínica", use_container_width=True):
-            with st.spinner("Generando reporte..."):
-                try:
-                    # Datos del paciente
-                    datos_pdf = json.loads(f_db.iloc[0]['datos_json'])
-                    df_mon_pdf = pd.DataFrame(datos_pdf.get('monitoreo', {}))
+                if not f_db.empty:
+                    pdf_key = f"pdf_historial_{dni_p}"
                     
-                    # --- CREACIÓN DEL GRÁFICO (MATPLOTLIB NO NECESITA CHROME) ---
-                    fig_mtp, ax = plt.subplots(figsize=(8, 5))
-                    for area in df_mon_pdf['Área'].unique():
-                        df_area = df_mon_pdf[df_mon_pdf['Área'] == area]
-                        sesiones = df_mon_pdf.columns[1:] 
-                        puntajes = df_area.iloc[0, 1:].values
-                        ax.plot(sesiones, puntajes, marker='o', label=area)
+                    # Verificamos si ya existe el PDF en la sesión para no procesar doble
+                    if st.session_state.get(pdf_key) is None:
+                        if st.button("📄 Preparar PDF de Ficha Clínica", use_container_width=True):
+                            with st.spinner("Generando reporte..."):
+                                try:
+                                    # Datos del paciente
+                                    datos_pdf = json.loads(f_db.iloc[0]['datos_json'])
+                                    df_mon_pdf = pd.DataFrame(datos_pdf.get('monitoreo', {}))
+                                    
+                                    # --- CREACIÓN DEL GRÁFICO (MATPLOTLIB NO NECESITA CHROME) ---
+                                    fig_mtp, ax = plt.subplots(figsize=(8, 5))
+                                    for area in df_mon_pdf['Área'].unique():
+                                        df_area = df_mon_pdf[df_mon_pdf['Área'] == area]
+                                        sesiones = df_mon_pdf.columns[1:] 
+                                        puntajes = df_area.iloc[0, 1:].values
+                                        ax.plot(sesiones, puntajes, marker='o', label=area)
 
-                    ax.set_title("Evolución de Puntajes por Área", fontsize=12)
-                    ax.set_xlabel("Sesión")
-                    ax.set_ylabel("Puntaje")
-                    ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
-                    ax.grid(True, linestyle='--', alpha=0.6)
-                    plt.tight_layout()
+                                    ax.set_title("Evolución de Puntajes por Área", fontsize=12)
+                                    ax.set_xlabel("Sesión")
+                                    ax.set_ylabel("Puntaje")
+                                    ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
+                                    ax.grid(True, linestyle='--', alpha=0.6)
+                                    plt.tight_layout()
 
-                    # Guardado en buffer de memoria (BytesIO)
-                    img_buf = io.BytesIO()
-                    plt.savefig(img_buf, format='png', dpi=150)
-                    plt.close(fig_mtp)
-                    img_buf.seek(0)
+                                    # Guardado en buffer de memoria (BytesIO)
+                                    img_buf = io.BytesIO()
+                                    plt.savefig(img_buf, format='png', dpi=150)
+                                    plt.close(fig_mtp)
+                                    img_buf.seek(0)
+                                    
+                                    # Llamada a logic.py (debe retornar el output del PDF)
+                                    st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, img_buf)
+                                    st.rerun()
+
+                                except Exception as e:
+                                    st.error(f"Error técnico en el PDF: {e}")
                     
-                    # Llamada a logic.py (debe retornar el output del PDF)
-                    st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, img_buf)
-                    st.rerun()
+                    # Si el PDF ya está listo, mostramos la descarga
+                    else:
+                        col_down, col_reset = st.columns([0.8, 0.2])
+                        with col_down:
+                            st.download_button(
+                                label="📥 DESCARGAR REPORTE PDF",
+                                data=st.session_state[pdf_key],
+                                file_name=f"Expediente_{dni_p}.pdf",
+                                mime="application/pdf",
+                                use_container_width=True,
+                                type="primary"
+                            )
+                        with col_reset:
+                            if st.button("🔄", help="Generar de nuevo"):
+                                st.session_state[pdf_key] = None
+                                st.rerun()
 
-                except Exception as e:
-                    st.error(f"Error técnico en el PDF: {e}")
-    
-    # Si el PDF ya está listo, mostramos la descarga
-    else:
-        col_down, col_reset = st.columns([0.8, 0.2])
-        with col_down:
-            st.download_button(
-                label="📥 DESCARGAR REPORTE PDF",
-                data=st.session_state[pdf_key],
-                file_name=f"Expediente_{dni_p}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-                type="primary"
-            )
-        with col_reset:
-            if st.button("🔄", help="Generar de nuevo"):
-                st.session_state[pdf_key] = None
-                st.rerun()
+                else:
+                    st.button("📄 PDF No Disponible", disabled=True, use_container_width=True)
 
-else:
-    st.button("📄 PDF No Disponible", disabled=True, use_container_width=True)
+        st.divider() # Una línea visual para separar
 
-# --- 2. SECCIÓN DE TABS (AL MISMO NIVEL QUE EL 'IF NOT F_DB.EMPTY') ---
-# Estas pestañas se mostrarán siempre que el flujo llegue aquí
-st.divider() # Una línea visual para separar
+                # --- 1. LÓGICA DE EXPORTACIÓN PDF (MEMORIA & MATPLOTLIB) ---
+                if not f_db.empty:
+                    pdf_key = f"pdf_historial_{dni_p}"
+                    
+                    # Verificamos si ya existe el PDF en la sesión para no procesar doble
+                    if st.session_state.get(pdf_key) is None:
+                        if st.button("📄 Preparar PDF de Ficha Clínica", use_container_width=True):
+                            with st.spinner("Generando reporte..."):
+                                try:
+                                    # Datos del paciente
+                                    datos_pdf = json.loads(f_db.iloc[0]['datos_json'])
+                                    df_mon_pdf = pd.DataFrame(datos_pdf.get('monitoreo', {}))
+                                    
+                                    # --- CREACIÓN DEL GRÁFICO (MATPLOTLIB NO NECESITA CHROME) ---
+                                    fig_mtp, ax = plt.subplots(figsize=(8, 5))
+                                    for area in df_mon_pdf['Área'].unique():
+                                        df_area = df_mon_pdf[df_mon_pdf['Área'] == area]
+                                        sesiones = df_mon_pdf.columns[1:] 
+                                        puntajes = df_area.iloc[0, 1:].values
+                                        ax.plot(sesiones, puntajes, marker='o', label=area)
 
-tab_fil, tab_dipac, tab_mental, tab_mon, tab_evo = st.tabs([
-    "📋 Filiación", 
-    "🩺 Datos Paciente", 
-    "🧠 Salud Mental", 
-    "📈 Monitoreo", 
-    "📝 Evolución"
-])
+                                    ax.set_title("Evolución de Puntajes por Área", fontsize=12)
+                                    ax.set_xlabel("Sesión")
+                                    ax.set_ylabel("Puntaje")
+                                    ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
+                                    ax.grid(True, linestyle='--', alpha=0.6)
+                                    plt.tight_layout()
 
-with tab_fil:
-    st.subheader("Datos de Filiación")
-    # Aquí va tu código de visualización de filiación...
+                                    # Guardado en buffer de memoria (BytesIO)
+                                    img_buf = io.BytesIO()
+                                    plt.savefig(img_buf, format='png', dpi=150)
+                                    plt.close(fig_mtp)
+                                    img_buf.seek(0)
+                                    
+                                    # Llamada a logic.py (debe retornar el output del PDF)
+                                    st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, img_buf)
+                                    st.rerun()
 
-with tab_mon:
-    st.subheader("Gráfico de Monitoreo")
-    # Aquí puedes seguir usando px.line para la web, es interactivo
-    st.plotly_chart(fig_web, use_container_width=True)
+                                except Exception as e:
+                                    st.error(f"Error técnico en el PDF: {e}")
+                    
+                    # Si el PDF ya está listo, mostramos la descarga
+                    else:
+                        col_down, col_reset = st.columns([0.8, 0.2])
+                        with col_down:
+                            st.download_button(
+                                label="📥 DESCARGAR REPORTE PDF",
+                                data=st.session_state[pdf_key],
+                                file_name=f"Expediente_{dni_p}.pdf",
+                                mime="application/pdf",
+                                use_container_width=True,
+                                type="primary"
+                            )
+                        with col_reset:
+                            if st.button("🔄", help="Generar de nuevo"):
+                                st.session_state[pdf_key] = None
+                                st.rerun()
+
+                else:
+                    st.button("📄 PDF No Disponible", disabled=True, use_container_width=True)
+
+        st.divider() # Una línea visual para separar
 
         # --- PESTAÑAS ESTILO PINHOME ---
         tab_fil, tab_dipac, tab_mental, tab_mon, tab_evo = st.tabs([
