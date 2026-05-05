@@ -1,0 +1,17 @@
+libgconf-2-4
+    libgbm1
+    libnss3
+    libxss1
+    libasound2
+    ```
+3.  Guarda los cambios y haz `push` a tu repositorio.
+
+### 3. Alternativa: Usar la nueva versión de Plotly (Sin Kaleido)
+Recientemente, Plotly ha intentado alejarse de Kaleido debido a estos errores. Si no quieres lidiar con archivos de sistema, puedes intentar instalar `kaleido` pero usar el motor de renderizado de la versión más reciente de Plotly.
+
+En tu código, antes de llamar a `write_image`, puedes intentar configurar el motor así:
+
+```python
+import plotly.io as pio
+# Forzar el motor de renderizado si tienes problemas
+pio.kaleido.scope.default_format = "pdf"
