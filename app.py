@@ -9,6 +9,7 @@ import json
 import streamlit as st
 from datetime import datetime
 import streamlit as st
+import matplotlib.pyplot as plt
 import io
 
 # =========================================================
@@ -933,15 +934,24 @@ elif modulo == "📂 Historia Clínica":
                                 
                                 img_path = f"temp_hist_{dni_p}.png"
                                 try:
-    # Intentamos generar la imagen en memoria
-                                    img_bytes = fig_pdf.to_image(format="png", engine="kaleido")
+    # Creamos un gráfico idéntico pero en Matplotlib
+                                    fig_mtp, ax = plt.subplots(figsize=(6, 4))
+    # Ejemplo: ax.bar(datos_x, datos_y, color='skyblue')
+    # Aquí replica la lógica de tu histograma/gráfico con ax.bar o ax.plot
+                                    ax.set_title("Resultados de Evaluación")
     
-    # Pasamos los bytes directamente a la función del PDF
-                                    st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, img_bytes)
+    # Guardamos en un buffer de memoria (no en disco)
+                                    img_buf = io.BytesIO()
+                                    plt.savefig(img_buf, format='png', bbox_inches='tight')
+                                    plt.close(fig_mtp)
+                                    img_buf.seek(0)
+    
+    # Pasamos los bytes al generador de PDF
+                                    st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, img_buf)
+    
                                 except Exception as e:
-                                    st.error(f"No se pudo generar el gráfico para el PDF. Error técnico: {e}")
-    # Opcional: generar el PDF sin el gráfico para que al menos descargue algo
-                                st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, None)
+                                    st.error(f"Error al generar gráfico estático: {e}")
+                                    st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, None)
                                 
                                 # Generamos y guardamos el PDF en memoria
                                 st.session_state[pdf_key] = logic.generar_pdf_ficha(p, datos_pdf, img_path)
