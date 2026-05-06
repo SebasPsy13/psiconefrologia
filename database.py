@@ -346,3 +346,15 @@ def eliminar_atenciones_por_fecha(fecha):
         return False
     finally:
         conn.close()
+
+# Añadir a database.py dentro de create_tables()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS pruebas_psicometricas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            dni_paciente TEXT,
+            fecha TEXT,
+            prueba TEXT,
+            resultados_json TEXT,
+            FOREIGN KEY(dni_paciente) REFERENCES pacientes(dni)
+        )
+    ''')
