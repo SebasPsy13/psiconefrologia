@@ -566,3 +566,80 @@ def generar_informe_mensual_secuencial(mes, anio, df):
             pdf.ln(8) 
 
     return bytes(pdf.output())
+
+# Añadir a logic.py
+import json
+
+INFO_PRUEBAS = {
+    "HADS (Ansiedad y Depresión)": {"items": 14, "escala": [0, 1, 2, 3]},
+    "EAT (Actitudes Alimentarias)": {"items": 26, "escala": [0, 1, 2, 3]}, # Ajustar si usas la versión de 40 ítems
+    "CAEPO (Afrontamiento Oncológico/Crónico)": {"items": 40, "escala": [1, 2, 3, 4, 5]},
+    "FACES IV (Funcionamiento Familiar)": {"items": 62, "escala": [1, 2, 3, 4, 5]}
+}
+
+def calificar_prueba(prueba, respuestas):
+    """
+    Motor matemático de corrección psicométrica.
+    Recibe el nombre de la prueba y un diccionario con { 'item_1': valor, ... }
+    Retorna un diccionario con dimensiones, diagnóstico y gráfico.
+    """
+    resultados = {"dimensiones": {}, "diagnostico": "", "interpretacion": ""}
+
+    if prueba == "HADS (Ansiedad y Depresión)":
+        # Ítems impares = Ansiedad, Ítems pares = Depresión
+        ansiedad = sum([respuestas[f"item_{i}"] for i in [1, 3, 5, 7, 9, 11, 13]])
+        depresion = sum([respuestas[f"item_{i}"] for i in [2, 4, 6, 8, 10, 12, 14]])
+        
+        resultados["dimensiones"] = {"Ansiedad (A)": ansiedad, "Depresión (D)": depresion}
+        
+        # Lógica de interpretación HADS
+        diag_a = "Normal" if ansiedad <= 7 else "Dudoso/Borderline" if ansiedad <= 10 else "Problema Clínico"
+        diag_d = "Normal" if depresion <= 7 else "Dudoso/Borderline" if depresion <= 10 else "Problema Clínico"
+        
+        resultados["diagnostico"] = f"Ansiedad: {diag_a} | Depresión: {diag_d}"
+        resultados["interpretacion"] = f"El paciente presenta indicadores de Ansiedad en nivel '{diag_a}' y Depresión en nivel '{diag_d}'. Requiere monitoreo en áreas con puntaje > 10."
+
+    elif prueba == "EAT (Actitudes Alimentarias)":
+        puntaje_total = sum(respuestas.values())
+        resultados["dimensiones"] = {"Puntaje Total EAT": puntaje_total}
+        
+        if puntaje_total >= 20:
+            resultados["diagnostico"] = "Riesgo Clínico de TCA"
+            resultados["interpretacion"] = "Puntaje igual o superior a 20. Sugiere actitudes y comportamientos de alto riesgo relacionados con trastornos de la conducta alimentaria. Requiere evaluación especializada."
+        else:
+            resultados["diagnostico"] = "Bajo Riesgo"
+            resultados["interpretacion"] = "Puntaje dentro de los límites esperados. No se observan indicadores clínicos de riesgo en la conducta alimentaria."
+
+    elif prueba == "CAEPO (Afrontamiento Oncológico/Crónico)":
+        # Mapeo de las 7 dimensiones típicas del CAEPO
+        dim = {
+            "Enfrentamiento": sum([respuestas[f"item_{i}"] for i in [1, 8, 15, 22, 29, 36]]),
+            "Búsqueda de Info": sum([respuestas[f"item_{i}"] for i in [2, 9, 16, 23, 30, 37]]),
+            "Religión": sum([respuestas[f"item_{i}"] for i in [3, 10, 17, 24, 31, 38]]),
+            "Evitación": sum([respuestas[f"item_{i}"] for i in [4, 11, 18, 25, 32, 39]]),
+            "Negación": sum([respuestas[f"item_{i}"] for i in [5, 12, 19, 26, 33, 40]]),
+            "Aceptación": sum([respuestas[f"item_{i}"] for i in [6, 13, 20, 27, 34]]),
+            "Pasividad": sum([respuestas[f"item_{i}"] for i in [7, 14, 21, 28, 35]])
+        }
+        resultados["dimensiones"] = dim
+        estilo_predominante = max(dim, key=dim.get)
+        resultados["diagnostico"] = f"Estilo predominante: {estilo_predominante}"
+        resultados["interpretacion"] = f"El estilo de afrontamiento más utilizado por el paciente es '{estilo_predominante}'. Se debe evaluar si este estilo es adaptativo frente a las demandas del tratamiento en el servicio."
+
+    elif prueba == "FACES IV (Funcionamiento Familiar)":
+        # Sumatoria directa de las 8 escalas
+        dim = {
+            "Cohesión": sum([respuestas[f"item_{i}"] for i in [1, 7, 13, 19, 25, 31, 37]]),
+            "Flexibilidad": sum([respuestas[f"item_{i}"] for i in [2, 8, 14, 20, 26, 32, 38]]),
+            "Desligada": sum([respuestas[f"item_{i}"] for i in [3, 9, 15, 21, 27, 33, 39]]),
+            "Aglutinada": sum([respuestas[f"item_{i}"] for i in [4, 10, 16, 22, 28, 34, 40]]),
+            "Rígida": sum([respuestas[f"item_{i}"] for i in [5, 11, 17, 23, 29, 35, 41]]),
+            "Caótica": sum([respuestas[f"item_{i}"] for i in [6, 12, 18, 24, 30, 36, 42]]),
+            "Comunicación": sum([respuestas[f"item_{i}"] for i in range(43, 53)]),
+            "Satisfacción": sum([respuestas[f"item_{i}"] for i in range(53, 63)])
+        }
+        resultados["dimensiones"] = dim
+        resultados["diagnostico"] = "Perfil Familiar Multidimensional"
+        resultados["interpretacion"] = "Evaluación de la dinámica familiar estructurada en escalas balanceadas (Cohesión/Flexibilidad) y desbalanceadas. Contrastar las sumatorias brutas con el manual para ubicar el tipo de sistema familiar."
+
+    return resultados
