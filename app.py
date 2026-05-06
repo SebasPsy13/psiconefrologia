@@ -1551,79 +1551,98 @@ elif modulo == "📅 Informe Mensual":
 
 
 # =========================================================
-# MÓDULO: 🧩 PRUEBAS PSICOMÉTRICAS (CORRECCIÓN AUTOMÁTICA)
+# MÓDULO: 🧩 PRUEBAS PSICOMÉTRICAS
 # =========================================================
 elif modulo == "🧩 Pruebas Psicométricas":
-    st.title("🧩 Corrección de Pruebas Psicométricas")
-    st.markdown("<p style='color: #616161; margin-top: -15px;'>Automatización de calificación, interpretación y gráficos</p>", unsafe_allow_html=True)
+    st.title("🧩 Corrección Automatizada")
+    st.markdown("<p style='color: #616161; margin-top: -15px;'>Calificación, interpretación y graficación psicométrica</p>", unsafe_allow_html=True)
 
-    # --- DIÁLOGO (POP-UP) PARA LA PRUEBA ---
-    @st.dialog("Aplicación y Corrección de Prueba", width="large")
+    @st.dialog("Aplicación de Instrumento", width="large")
     def popup_evaluacion(paciente, prueba_seleccionada):
-        st.markdown(f"### 👤 Paciente: {paciente['nombres']} {paciente['apellidos']}")
+        st.markdown(f"### 👤 {paciente['nombres']} {paciente['apellidos']}")
         st.markdown(f"**DNI:** {paciente['dni']} | **Prueba:** {prueba_seleccionada}")
         st.divider()
 
-        # Aquí irá el formulario dinámico dependiendo de la prueba
+        info = logic.INFO_PRUEBAS[prueba_seleccionada]
+        num_items = info["items"]
+        escala = info["escala"]
+
         with st.form(f"form_prueba_{prueba_seleccionada}"):
-            st.info("Aquí se cargarán los campos de entrada según la prueba (Ej. matriz de respuestas o sumatorias directas).")
+            st.info(f"Ingrese la puntuación bruta para cada uno de los {num_items} ítems.")
             
-            # Ejemplo de campos genéricos temporales
-            puntuacion_bruta = st.number_input("Puntuación Directa Total (Temporal)", min_value=0)
+            # Generador dinámico de matriz de inputs (4 columnas)
+            respuestas = {}
+            cols = st.columns(4)
+            for i in range(1, num_items + 1):
+                with cols[(i - 1) % 4]:
+                    respuestas[f"item_{i}"] = st.selectbox(
+                        f"Ítem {i}", 
+                        options=escala, 
+                        key=f"item_{i}_{prueba_seleccionada}"
+                    )
             
-            if st.form_submit_button("📊 CALCULAR Y GUARDAR RESULTADOS", use_container_width=True, type="primary"):
-                # Aquí llamaremos a logic.py para calcular los resultados usando tus Excel
-                # Ej: resultados = logic.corregir_prueba(prueba_seleccionada, puntuacion_bruta)
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.form_submit_button("📊 PROCESAR DATOS Y GENERAR INFORME", type="primary", use_container_width=True):
+                # Calcular resultados usando logic.py
+                resultados = logic.calificar_prueba(prueba_seleccionada, respuestas)
                 
-                # Simularemos los resultados por ahora
-                resultados = {
-                    "puntaje": puntuacion_bruta,
-                    "categoria": "Nivel Moderado",
-                    "interpretacion": "El paciente presenta indicadores moderados en la escala evaluada.",
-                    "dimensiones": {"Dimensión A": 15, "Dimensión B": 20, "Dimensión C": 10}
-                }
-
-                # 1. Mostrar Interpretación
-                st.success(f"**Diagnóstico / Categoría:** {resultados['categoria']}")
-                st.write(f"**Interpretación:** {resultados['interpretacion']}")
-
-                # 2. Generar Gráfico de Barras con Plotly
-                df_grafico = pd.DataFrame(list(resultados['dimensiones'].items()), columns=['Dimensión', 'Puntaje'])
-                fig = px.bar(df_grafico, x='Dimensión', y='Puntaje', text='Puntaje', 
-                             color='Dimensión', title=f"Perfil: {prueba_seleccionada}")
-                fig.update_layout(showlegend=False)
-                st.plotly_chart(fig, use_container_width=True)
-
-                # 3. Guardar en Base de Datos (perfil del paciente)
-                # db.guardar_resultado_psicometrico(paciente['dni'], prueba_seleccionada, resultados)
-                st.toast("Resultados guardados en el perfil del paciente exitosamente.")
-                
+                # Guardar en base de datos
+                if db.guardar_resultado_psicometrico(paciente['dni'], prueba_seleccionada, resultados):
+                    st.session_state[f"resultados_{paciente['dni']}"] = resultados
+                    st.rerun()
 
     # --- PANEL PRINCIPAL DEL MÓDULO ---
     if p_df is not None and not p_df.empty:
         paciente_actual = p_df.iloc[0]
+        dni_actual = paciente_actual['dni']
         
-        with st.container(border=True):
-            st.markdown(f"#### 🎯 Paciente Seleccionado: <span style='color: #00A896;'>{paciente_actual['nombres']} {paciente_actual['apellidos']}</span>", unsafe_allow_html=True)
-            
-            lista_pruebas = [
-                "Seleccione una prueba...",
-                "1. Inventario de Depresión (Ejemplo)", 
-                "2. Escala de Ansiedad (Ejemplo)", 
-                "3. Cuestionario de Calidad de Vida (Ejemplo)", 
-                "4. Escala de Estrés Percibido (Ejemplo)"
-            ]
-            
-            prueba_elegida = st.selectbox("Seleccione el instrumento a calificar:", lista_pruebas)
-            
-            if prueba_elegida != "Seleccione una prueba...":
-                if st.button(f"📝 ABRIR PANEL DE CORRECCIÓN: {prueba_elegida}", type="primary", use_container_width=True):
-                    popup_evaluacion(paciente_actual, prueba_elegida)
+        col_ctrl, col_view = st.columns([1, 1.5], gap="large")
+        
+        with col_ctrl:
+            with st.container(border=True):
+                st.subheader("1. Seleccionar Instrumento")
+                prueba_elegida = st.selectbox("Catálogo de Pruebas:", ["Seleccione..."] + list(logic.INFO_PRUEBAS.keys()))
+                
+                if prueba_elegida != "Seleccione...":
+                    if st.button(f"📝 INGRESAR DATOS: {prueba_elegida.split(' ')[0]}", type="primary", use_container_width=True):
+                        popup_evaluacion(paciente_actual, prueba_elegida)
+        
+        with col_view:
+            with st.container(border=True):
+                st.subheader("2. Panel de Resultados")
+                # Verificar si hay resultados en la sesión actual para renderizar
+                clave_resultados = f"resultados_{dni_actual}"
+                if clave_resultados in st.session_state:
+                    res = st.session_state[clave_resultados]
                     
+                    st.success(f"**Conclusión de Evaluación:** {res['diagnostico']}")
+                    st.info(f"**Interpretación Clínica:** {res['interpretacion']}")
+                    
+                    # Gráfico de Plotly Dinámico
+                    df_grafico = pd.DataFrame(list(res['dimensiones'].items()), columns=['Dimensión', 'Puntaje'])
+                    fig = px.bar(df_grafico, x='Dimensión', y='Puntaje', text='Puntaje', 
+                                 color='Dimensión', color_discrete_sequence=px.colors.qualitative.Pastel)
+                    fig.update_layout(showlegend=False, height=350, margin=dict(t=10, b=0, l=0, r=0))
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.markdown("""
+                        <div style="text-align: center; padding: 40px; color: #BDC3C7;">
+                            <h2>📊</h2>
+                            <p>Ejecute una prueba para visualizar el perfil gráfico y la interpretación.</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+        # Historial de Pruebas
+        st.divider()
+        st.subheader("📂 Historial Psicométrico del Paciente")
+        conn = db.get_connection()
+        df_historial = pd.read_sql_query(f"SELECT fecha, prueba FROM pruebas_psicometricas WHERE dni_paciente='{dni_actual}' ORDER BY id DESC", conn)
+        conn.close()
+        
+        if not df_historial.empty:
+            st.dataframe(df_historial, use_container_width=True, hide_index=True)
+        else:
+            st.caption("El paciente no cuenta con evaluaciones psicométricas registradas.")
+
     else:
-        st.markdown("""
-            <div style="text-align: center; padding: 60px; background-color: white; border-radius: 20px; border: 1px dashed #BDC3C7;">
-                <h2 style="color: #BDC3C7;">🔍</h2>
-                <h4 style="color: #7F8C8D;">Busque y seleccione un paciente en la barra lateral para iniciar una evaluación</h4>
-            </div>
-        """, unsafe_allow_html=True)
+        st.info("🔍 Busque y seleccione un paciente en la barra lateral para iniciar una evaluación.")
