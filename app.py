@@ -1563,6 +1563,7 @@ elif modulo == "🧩 Pruebas Psicométricas":
         st.markdown(f"**DNI:** {paciente['dni']} | **Prueba:** {prueba_seleccionada}")
         st.divider()
 
+        # Extraemos la información de la prueba desde logic.py
         info = logic.INFO_PRUEBAS[prueba_seleccionada]
         num_items = info["items"]
         escala = info["escala"]
@@ -1610,6 +1611,7 @@ elif modulo == "🧩 Pruebas Psicométricas":
         with col_view:
             with st.container(border=True):
                 st.subheader("2. Panel de Resultados")
+                
                 # Verificar si hay resultados en la sesión actual para renderizar
                 clave_resultados = f"resultados_{dni_actual}"
                 if clave_resultados in st.session_state:
@@ -1636,13 +1638,18 @@ elif modulo == "🧩 Pruebas Psicométricas":
         st.divider()
         st.subheader("📂 Historial Psicométrico del Paciente")
         conn = db.get_connection()
-        df_historial = pd.read_sql_query(f"SELECT fecha, prueba FROM pruebas_psicometricas WHERE dni_paciente='{dni_actual}' ORDER BY id DESC", conn)
-        conn.close()
+        try:
+            df_historial = pd.read_sql_query(f"SELECT fecha, prueba FROM pruebas_psicometricas WHERE dni_paciente='{dni_actual}' ORDER BY id DESC", conn)
+        except Exception as e:
+            # Si la tabla no existe o hay error de lectura, creamos un df vacío
+            df_historial = pd.DataFrame(columns=['fecha', 'prueba'])
+        finally:
+            conn.close()
         
         if not df_historial.empty:
             st.dataframe(df_historial, use_container_width=True, hide_index=True)
         else:
-            st.caption("El paciente no cuenta con evaluaciones psicométricas registradas.")
+            st.caption("El paciente no cuenta con evaluaciones psicométricas registradas o la tabla está inicializándose.")
 
     else:
         st.info("🔍 Busque y seleccione un paciente en la barra lateral para iniciar una evaluación.")
