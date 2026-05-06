@@ -1563,19 +1563,20 @@ elif modulo == "🧩 Pruebas Psicométricas":
         st.markdown(f"**DNI:** {paciente['dni']} | **Prueba:** {prueba_seleccionada}")
         st.divider()
 
-        # Extraemos la información de la prueba desde logic.py
+        # Obtener configuración desde logic.py
         info = logic.INFO_PRUEBAS[prueba_seleccionada]
         num_items = info["items"]
         escala = info["escala"]
 
         with st.form(f"form_prueba_{prueba_seleccionada}"):
-            st.info(f"Ingrese la puntuación bruta para cada uno de los {num_items} ítems.")
+            st.info(f"Ingrese la puntuación para cada uno de los {num_items} ítems. Los valores '0' se registrarán correctamente.")
             
-            # Generador dinámico de matriz de inputs (4 columnas)
+            # Generador dinámico de matriz de ítems (4 columnas para mejor visualización)
             respuestas = {}
             cols = st.columns(4)
             for i in range(1, num_items + 1):
                 with cols[(i - 1) % 4]:
+                    # Usamos el valor seleccionado directamente como entero
                     respuestas[f"item_{i}"] = st.selectbox(
                         f"Ítem {i}", 
                         options=escala, 
@@ -1584,15 +1585,19 @@ elif modulo == "🧩 Pruebas Psicométricas":
             
             st.markdown("<br>", unsafe_allow_html=True)
             if st.form_submit_button("📊 PROCESAR DATOS Y GENERAR INFORME", type="primary", use_container_width=True):
-                # Calcular resultados usando logic.py
+                # Calcular resultados (Motor lógico en logic.py)
                 resultados = logic.calificar_prueba(prueba_seleccionada, respuestas)
                 
-                # Guardar en base de datos
+                # Intentar guardado en base de datos
                 if db.guardar_resultado_psicometrico(paciente['dni'], prueba_seleccionada, resultados):
+                    # Almacenamos en session_state para visualización inmediata
                     st.session_state[f"resultados_{paciente['dni']}"] = resultados
+                    st.success("✅ Evaluación registrada exitosamente.")
                     st.rerun()
+                else:
+                    st.error("❌ Error de Guardado: No se pudo registrar la prueba en la base de datos.")
 
-    # --- PANEL PRINCIPAL DEL MÓDULO ---
+    # --- PANEL PRINCIPAL DE TRABAJO ---
     if p_df is not None and not p_df.empty:
         paciente_actual = p_df.iloc[0]
         dni_actual = paciente_actual['dni']
@@ -1601,55 +1606,58 @@ elif modulo == "🧩 Pruebas Psicométricas":
         
         with col_ctrl:
             with st.container(border=True):
-                st.subheader("1. Seleccionar Instrumento")
-                prueba_elegida = st.selectbox("Catálogo de Pruebas:", ["Seleccione..."] + list(logic.INFO_PRUEBAS.keys()))
+                st.subheader("1. Selección de Prueba")
+                # Cargamos las llaves definidas en logic.py
+                prueba_elegida = st.selectbox("Catálogo Disponible:", ["Seleccione..."] + list(logic.INFO_PRUEBAS.keys()))
                 
                 if prueba_elegida != "Seleccione...":
-                    if st.button(f"📝 INGRESAR DATOS: {prueba_elegida.split(' ')[0]}", type="primary", use_container_width=True):
+                    if st.button(f"📝 EVALUAR: {prueba_elegida.split(' ')[0]}", type="primary", use_container_width=True):
                         popup_evaluacion(paciente_actual, prueba_elegida)
         
         with col_view:
             with st.container(border=True):
-                st.subheader("2. Panel de Resultados")
+                st.subheader("2. Resultados del Encuentro")
                 
-                # Verificar si hay resultados en la sesión actual para renderizar
-                clave_resultados = f"resultados_{dni_actual}"
-                if clave_resultados in st.session_state:
-                    res = st.session_state[clave_resultados]
+                clave_res = f"resultados_{dni_actual}"
+                if clave_res in st.session_state:
+                    res = st.session_state[clave_res]
                     
-                    st.success(f"**Conclusión de Evaluación:** {res['diagnostico']}")
-                    st.info(f"**Interpretación Clínica:** {res['interpretacion']}")
+                    st.markdown(f"**Diagnóstico:** `{res['diagnostico']}`")
+                    st.info(f"**Interpretación:** {res['interpretacion']}")
                     
-                    # Gráfico de Plotly Dinámico
-                    df_grafico = pd.DataFrame(list(res['dimensiones'].items()), columns=['Dimensión', 'Puntaje'])
-                    fig = px.bar(df_grafico, x='Dimensión', y='Puntaje', text='Puntaje', 
-                                 color='Dimensión', color_discrete_sequence=px.colors.qualitative.Pastel)
+                    # Renderizado de gráfico evolutivo/dimensional
+                    df_plot = pd.DataFrame(list(res['dimensiones'].items()), columns=['Área', 'Puntaje'])
+                    fig = px.bar(df_plot, x='Área', y='Puntaje', text='Puntaje', 
+                                 color='Área', color_discrete_sequence=px.colors.qualitative.T10)
                     fig.update_layout(showlegend=False, height=350, margin=dict(t=10, b=0, l=0, r=0))
                     st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.markdown("""
-                        <div style="text-align: center; padding: 40px; color: #BDC3C7;">
-                            <h2>📊</h2>
-                            <p>Ejecute una prueba para visualizar el perfil gráfico y la interpretación.</p>
+                        <div style="text-align: center; padding: 50px; color: #BDC3C7;">
+                            <h1 style="font-size: 50px;">📊</h1>
+                            <p>Complete una evaluación para visualizar el perfil psicométrico.</p>
                         </div>
                     """, unsafe_allow_html=True)
                     
-        # Historial de Pruebas
+        # Historial de Pruebas del Paciente (Blindado contra errores de tabla)
         st.divider()
-        st.subheader("📂 Historial Psicométrico del Paciente")
+        st.subheader("📂 Registro Histórico de Pruebas")
         conn = db.get_connection()
         try:
-            df_historial = pd.read_sql_query(f"SELECT fecha, prueba FROM pruebas_psicometricas WHERE dni_paciente='{dni_actual}' ORDER BY id DESC", conn)
-        except Exception as e:
-            # Si la tabla no existe o hay error de lectura, creamos un df vacío
-            df_historial = pd.DataFrame(columns=['fecha', 'prueba'])
+            df_hist = pd.read_sql_query(
+                f"SELECT fecha as Fecha, prueba as Instrumento FROM pruebas_psicometricas WHERE dni_paciente='{dni_actual}' ORDER BY id DESC", 
+                conn
+            )
+        except Exception:
+            # Si la tabla no existe o hay error, mostramos estructura vacía
+            df_hist = pd.DataFrame(columns=['Fecha', 'Instrumento'])
         finally:
             conn.close()
         
-        if not df_historial.empty:
-            st.dataframe(df_historial, use_container_width=True, hide_index=True)
+        if not df_hist.empty:
+            st.dataframe(df_hist, use_container_width=True, hide_index=True)
         else:
-            st.caption("El paciente no cuenta con evaluaciones psicométricas registradas o la tabla está inicializándose.")
+            st.caption("No se registran antecedentes psicométricos para este paciente.")
 
     else:
-        st.info("🔍 Busque y seleccione un paciente en la barra lateral para iniciar una evaluación.")
+        st.info("🔍 Por favor, busque un paciente en la barra lateral para habilitar el módulo psicométrico.")
