@@ -358,3 +358,19 @@ def eliminar_atenciones_por_fecha(fecha):
             FOREIGN KEY(dni_paciente) REFERENCES pacientes(dni)
         )
     ''')
+    
+def guardar_resultado_psicometrico(dni, prueba, resultados):
+    """Guarda el resultado de una prueba psicométrica en la base de datos."""
+    conn = get_connection()
+    try:
+        conn.execute(
+            "INSERT INTO pruebas_psicometricas (dni_paciente, fecha, prueba, resultados_json) VALUES (?, date('now', 'localtime'), ?, ?)",
+            (dni, prueba, json.dumps(resultados))
+        )
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error al guardar prueba: {e}")
+        return False
+    finally:
+        conn.close()
