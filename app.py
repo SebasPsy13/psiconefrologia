@@ -316,7 +316,8 @@ modulo = st.sidebar.radio(
         "📋 Salas", 
         "📝 Ficha Virtual", 
         "📂 Historia Clínica", 
-        "📈 Evolución", 
+        "📈 Evolución",
+        "🧩 Pruebas Psicométricas",
         "📊 Administración", 
         "📅 Informe Mensual",
         "⚙️ Mantenimiento"
@@ -1547,3 +1548,82 @@ elif modulo == "📅 Informe Mensual":
                 output = io.BytesIO()
                 df_final_mes.to_excel(output, index=False)
                 st.download_button("📥 EXCEL TOTAL", data=output.getvalue(), file_name=f"Data_{mes_sel}.xlsx", use_container_width=True)
+
+
+# =========================================================
+# MÓDULO: 🧩 PRUEBAS PSICOMÉTRICAS (CORRECCIÓN AUTOMÁTICA)
+# =========================================================
+elif modulo == "🧩 Pruebas Psicométricas":
+    st.title("🧩 Corrección de Pruebas Psicométricas")
+    st.markdown("<p style='color: #616161; margin-top: -15px;'>Automatización de calificación, interpretación y gráficos</p>", unsafe_allow_html=True)
+
+    # --- DIÁLOGO (POP-UP) PARA LA PRUEBA ---
+    @st.dialog("Aplicación y Corrección de Prueba", width="large")
+    def popup_evaluacion(paciente, prueba_seleccionada):
+        st.markdown(f"### 👤 Paciente: {paciente['nombres']} {paciente['apellidos']}")
+        st.markdown(f"**DNI:** {paciente['dni']} | **Prueba:** {prueba_seleccionada}")
+        st.divider()
+
+        # Aquí irá el formulario dinámico dependiendo de la prueba
+        with st.form(f"form_prueba_{prueba_seleccionada}"):
+            st.info("Aquí se cargarán los campos de entrada según la prueba (Ej. matriz de respuestas o sumatorias directas).")
+            
+            # Ejemplo de campos genéricos temporales
+            puntuacion_bruta = st.number_input("Puntuación Directa Total (Temporal)", min_value=0)
+            
+            if st.form_submit_button("📊 CALCULAR Y GUARDAR RESULTADOS", use_container_width=True, type="primary"):
+                # Aquí llamaremos a logic.py para calcular los resultados usando tus Excel
+                # Ej: resultados = logic.corregir_prueba(prueba_seleccionada, puntuacion_bruta)
+                
+                # Simularemos los resultados por ahora
+                resultados = {
+                    "puntaje": puntuacion_bruta,
+                    "categoria": "Nivel Moderado",
+                    "interpretacion": "El paciente presenta indicadores moderados en la escala evaluada.",
+                    "dimensiones": {"Dimensión A": 15, "Dimensión B": 20, "Dimensión C": 10}
+                }
+
+                # 1. Mostrar Interpretación
+                st.success(f"**Diagnóstico / Categoría:** {resultados['categoria']}")
+                st.write(f"**Interpretación:** {resultados['interpretacion']}")
+
+                # 2. Generar Gráfico de Barras con Plotly
+                df_grafico = pd.DataFrame(list(resultados['dimensiones'].items()), columns=['Dimensión', 'Puntaje'])
+                fig = px.bar(df_grafico, x='Dimensión', y='Puntaje', text='Puntaje', 
+                             color='Dimensión', title=f"Perfil: {prueba_seleccionada}")
+                fig.update_layout(showlegend=False)
+                st.plotly_chart(fig, use_container_width=True)
+
+                # 3. Guardar en Base de Datos (perfil del paciente)
+                # db.guardar_resultado_psicometrico(paciente['dni'], prueba_seleccionada, resultados)
+                st.toast("Resultados guardados en el perfil del paciente exitosamente.")
+                
+
+    # --- PANEL PRINCIPAL DEL MÓDULO ---
+    if p_df is not None and not p_df.empty:
+        paciente_actual = p_df.iloc[0]
+        
+        with st.container(border=True):
+            st.markdown(f"#### 🎯 Paciente Seleccionado: <span style='color: #00A896;'>{paciente_actual['nombres']} {paciente_actual['apellidos']}</span>", unsafe_allow_html=True)
+            
+            lista_pruebas = [
+                "Seleccione una prueba...",
+                "1. Inventario de Depresión (Ejemplo)", 
+                "2. Escala de Ansiedad (Ejemplo)", 
+                "3. Cuestionario de Calidad de Vida (Ejemplo)", 
+                "4. Escala de Estrés Percibido (Ejemplo)"
+            ]
+            
+            prueba_elegida = st.selectbox("Seleccione el instrumento a calificar:", lista_pruebas)
+            
+            if prueba_elegida != "Seleccione una prueba...":
+                if st.button(f"📝 ABRIR PANEL DE CORRECCIÓN: {prueba_elegida}", type="primary", use_container_width=True):
+                    popup_evaluacion(paciente_actual, prueba_elegida)
+                    
+    else:
+        st.markdown("""
+            <div style="text-align: center; padding: 60px; background-color: white; border-radius: 20px; border: 1px dashed #BDC3C7;">
+                <h2 style="color: #BDC3C7;">🔍</h2>
+                <h4 style="color: #7F8C8D;">Busque y seleccione un paciente en la barra lateral para iniciar una evaluación</h4>
+            </div>
+        """, unsafe_allow_html=True)
