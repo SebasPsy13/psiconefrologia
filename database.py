@@ -361,8 +361,22 @@ def eliminar_atenciones_por_fecha(fecha):
     
 def guardar_resultado_psicometrico(dni, prueba, resultados):
     """Guarda el resultado de una prueba psicométrica en la base de datos."""
+    import json # Asegúrate de que json esté importado arriba en tu database.py
     conn = get_connection()
     try:
+        # 1. FORZAMOS la creación de la tabla para evitar el fallo silencioso
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS pruebas_psicometricas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                dni_paciente TEXT,
+                fecha TEXT,
+                prueba TEXT,
+                resultados_json TEXT,
+                FOREIGN KEY(dni_paciente) REFERENCES pacientes(dni)
+            )
+        ''')
+        
+        # 2. Insertamos los datos
         conn.execute(
             "INSERT INTO pruebas_psicometricas (dni_paciente, fecha, prueba, resultados_json) VALUES (?, date('now', 'localtime'), ?, ?)",
             (dni, prueba, json.dumps(resultados))
@@ -370,7 +384,7 @@ def guardar_resultado_psicometrico(dni, prueba, resultados):
         conn.commit()
         return True
     except Exception as e:
-        print(f"Error al guardar prueba: {e}")
+        print(f"Error crítico al guardar la prueba: {e}")
         return False
     finally:
         conn.close()
