@@ -1555,7 +1555,7 @@ elif modulo == "📅 Informe Mensual":
 # =========================================================
 elif modulo == "🧩 Pruebas Psicométricas":
     st.title("🧩 Corrección Automatizada")
-    st.markdown("<p style='color: #616161; margin-top: -15px;'>Calificación, interpretación y graficación psicométrica</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #616161; margin-top: -15px;'>Calificación clínica, fórmulas de Olson e ítems inversos automáticos</p>", unsafe_allow_html=True)
 
     @st.dialog("Aplicación de Instrumento", width="large")
     def popup_evaluacion(paciente, prueba_seleccionada):
@@ -1563,39 +1563,42 @@ elif modulo == "🧩 Pruebas Psicométricas":
         st.markdown(f"**DNI:** {paciente['dni']} | **Prueba:** {prueba_seleccionada}")
         st.divider()
 
-        # Obtener configuración desde logic.py
         info = logic.INFO_PRUEBAS[prueba_seleccionada]
         num_items = info["items"]
-        escala = info["escala"]
+        val_min = info["min"]
+        val_max = info["max"]
 
         with st.form(f"form_prueba_{prueba_seleccionada}"):
-            st.info(f"Ingrese la puntuación para cada uno de los {num_items} ítems. Los valores '0' se registrarán correctamente.")
+            st.info(f"Matriz de ingreso: {num_items} ítems. El rango permitido para esta prueba es de {val_min} a {val_max}.")
             
-            # Generador dinámico de matriz de ítems (4 columnas para mejor visualización)
             respuestas = {}
-            cols = st.columns(4)
+            
+            # Matriz horizontal adaptable
+            st.markdown("<div style='overflow-x: auto; padding-bottom: 15px;'>", unsafe_allow_html=True)
+            cols = st.columns(num_items)
             for i in range(1, num_items + 1):
-                with cols[(i - 1) % 4]:
-                    # Usamos el valor seleccionado directamente como entero
-                    respuestas[f"item_{i}"] = st.selectbox(
-                        f"Ítem {i}", 
-                        options=escala, 
-                        key=f"item_{i}_{prueba_seleccionada}"
+                with cols[i - 1]:
+                    # Los límites min y max previenen el ingreso de datos fuera del baremo
+                    respuestas[f"item_{i}"] = st.number_input(
+                        f"I-{i}", 
+                        min_value=val_min, 
+                        max_value=val_max, 
+                        step=1, 
+                        key=f"item_{i}_{prueba_seleccionada}",
+                        label_visibility="visible"
                     )
+            st.markdown("</div>", unsafe_allow_html=True)
             
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.form_submit_button("📊 PROCESAR DATOS Y GENERAR INFORME", type="primary", use_container_width=True):
-                # Calcular resultados (Motor lógico en logic.py)
+            if st.form_submit_button("📊 PROCESAR MATRIZ", type="primary", use_container_width=True):
                 resultados = logic.calificar_prueba(prueba_seleccionada, respuestas)
                 
-                # Intentar guardado en base de datos
                 if db.guardar_resultado_psicometrico(paciente['dni'], prueba_seleccionada, resultados):
-                    # Almacenamos en session_state para visualización inmediata
                     st.session_state[f"resultados_{paciente['dni']}"] = resultados
-                    st.success("✅ Evaluación registrada exitosamente.")
+                    st.success("✅ Evaluación procesada según algoritmos clínicos y guardada exitosamente.")
                     st.rerun()
                 else:
-                    st.error("❌ Error de Guardado: No se pudo registrar la prueba en la base de datos.")
+                    st.error("❌ Error de Guardado en DB.")
 
     # --- PANEL PRINCIPAL DE TRABAJO ---
     if p_df is not None and not p_df.empty:
@@ -1607,25 +1610,24 @@ elif modulo == "🧩 Pruebas Psicométricas":
         with col_ctrl:
             with st.container(border=True):
                 st.subheader("1. Selección de Prueba")
-                # Cargamos las llaves definidas en logic.py
                 prueba_elegida = st.selectbox("Catálogo Disponible:", ["Seleccione..."] + list(logic.INFO_PRUEBAS.keys()))
                 
                 if prueba_elegida != "Seleccione...":
-                    if st.button(f"📝 EVALUAR: {prueba_elegida.split(' ')[0]}", type="primary", use_container_width=True):
+                    if st.button(f"📝 INGRESAR MATRIZ: {prueba_elegida.split(' ')[0]}", type="primary", use_container_width=True):
                         popup_evaluacion(paciente_actual, prueba_elegida)
         
         with col_view:
             with st.container(border=True):
-                st.subheader("2. Resultados del Encuentro")
+                st.subheader("2. Resultados y Diagnóstico")
                 
                 clave_res = f"resultados_{dni_actual}"
                 if clave_res in st.session_state:
                     res = st.session_state[clave_res]
                     
-                    st.markdown(f"**Diagnóstico:** `{res['diagnostico']}`")
+                    st.markdown(f"**Conclusión Cuantitativa:** `{res['diagnostico']}`")
                     st.info(f"**Interpretación:** {res['interpretacion']}")
                     
-                    # Renderizado de gráfico evolutivo/dimensional
+                    # Graficación Plotly
                     df_plot = pd.DataFrame(list(res['dimensiones'].items()), columns=['Área', 'Puntaje'])
                     fig = px.bar(df_plot, x='Área', y='Puntaje', text='Puntaje', 
                                  color='Área', color_discrete_sequence=px.colors.qualitative.T10)
@@ -1634,14 +1636,13 @@ elif modulo == "🧩 Pruebas Psicométricas":
                 else:
                     st.markdown("""
                         <div style="text-align: center; padding: 50px; color: #BDC3C7;">
-                            <h1 style="font-size: 50px;">📊</h1>
-                            <p>Complete una evaluación para visualizar el perfil psicométrico.</p>
+                            <h1 style="font-size: 50px;">📉</h1>
+                            <p>Complete la matriz de la prueba para generar el perfil psicométrico.</p>
                         </div>
                     """, unsafe_allow_html=True)
                     
-        # Historial de Pruebas del Paciente (Blindado contra errores de tabla)
         st.divider()
-        st.subheader("📂 Registro Histórico de Pruebas")
+        st.subheader("📂 Registro Histórico")
         conn = db.get_connection()
         try:
             df_hist = pd.read_sql_query(
@@ -1649,7 +1650,6 @@ elif modulo == "🧩 Pruebas Psicométricas":
                 conn
             )
         except Exception:
-            # Si la tabla no existe o hay error, mostramos estructura vacía
             df_hist = pd.DataFrame(columns=['Fecha', 'Instrumento'])
         finally:
             conn.close()
@@ -1657,7 +1657,7 @@ elif modulo == "🧩 Pruebas Psicométricas":
         if not df_hist.empty:
             st.dataframe(df_hist, use_container_width=True, hide_index=True)
         else:
-            st.caption("No se registran antecedentes psicométricos para este paciente.")
+            st.caption("No se registran evaluaciones psicométricas previas.")
 
     else:
-        st.info("🔍 Por favor, busque un paciente en la barra lateral para habilitar el módulo psicométrico.")
+        st.info("🔍 Seleccione un paciente del padrón izquierdo para continuar.")
