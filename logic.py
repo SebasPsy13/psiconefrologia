@@ -567,79 +567,101 @@ def generar_informe_mensual_secuencial(mes, anio, df):
 
     return bytes(pdf.output())
 
-# Añadir a logic.py
 import json
 
+# Se definen los límites exactos (0-3 o 1-5) para blindar la entrada de datos.
 INFO_PRUEBAS = {
-    "HADS (Ansiedad y Depresión)": {"items": 14, "escala": [0, 1, 2, 3]},
-    "EAT (Actitudes Alimentarias)": {"items": 26, "escala": [0, 1, 2, 3]}, # Ajustar si usas la versión de 40 ítems
-    "CAEPO (Afrontamiento Oncológico/Crónico)": {"items": 40, "escala": [1, 2, 3, 4, 5]},
-    "FACES IV (Funcionamiento Familiar)": {"items": 62, "escala": [1, 2, 3, 4, 5]}
+    "HADS (Ansiedad y Depresión)": {"items": 14, "min": 0, "max": 3},
+    "EAT (Adherencia al Tratamiento)": {"items": 21, "min": 1, "max": 5},
+    "CAEPO (Afrontamiento Oncológico)": {"items": 40, "min": 0, "max": 3},
+    "FACES IV (Funcionamiento Familiar)": {"items": 62, "min": 1, "max": 5}
 }
 
 def calificar_prueba(prueba, respuestas):
     """
-    Motor matemático de corrección psicométrica.
-    Recibe el nombre de la prueba y un diccionario con { 'item_1': valor, ... }
-    Retorna un diccionario con dimensiones, diagnóstico y gráfico.
+    Motor matemático de corrección psicométrica basado en parámetros clínicos exactos.
     """
     resultados = {"dimensiones": {}, "diagnostico": "", "interpretacion": ""}
 
     if prueba == "HADS (Ansiedad y Depresión)":
-        # Ítems impares = Ansiedad, Ítems pares = Depresión
+        # Sumatoria directa según el Excel proporcionado
         ansiedad = sum([respuestas[f"item_{i}"] for i in [1, 3, 5, 7, 9, 11, 13]])
         depresion = sum([respuestas[f"item_{i}"] for i in [2, 4, 6, 8, 10, 12, 14]])
         
-        resultados["dimensiones"] = {"Ansiedad (A)": ansiedad, "Depresión (D)": depresion}
+        resultados["dimensiones"] = {"Ansiedad": ansiedad, "Depresión": depresion}
         
-        # Lógica de interpretación HADS
-        diag_a = "Normal" if ansiedad <= 7 else "Dudoso/Borderline" if ansiedad <= 10 else "Problema Clínico"
-        diag_d = "Normal" if depresion <= 7 else "Dudoso/Borderline" if depresion <= 10 else "Problema Clínico"
+        diag_a = "Normal" if ansiedad <= 7 else "Dudoso" if ansiedad <= 10 else "Problema Clínico"
+        diag_d = "Normal" if depresion <= 7 else "Dudoso" if depresion <= 10 else "Problema Clínico"
         
-        resultados["diagnostico"] = f"Ansiedad: {diag_a} | Depresión: {diag_d}"
-        resultados["interpretacion"] = f"El paciente presenta indicadores de Ansiedad en nivel '{diag_a}' y Depresión en nivel '{diag_d}'. Requiere monitoreo en áreas con puntaje > 10."
+        resultados["diagnostico"] = f"Ans: {diag_a} | Dep: {diag_d}"
+        resultados["interpretacion"] = "Valores de 0 a 7 se consideran Normales. De 8 a 10 indican un Caso Probable (Dudoso). De 11 a 21 señalan Problema Clínico."
 
-    elif prueba == "EAT (Actitudes Alimentarias)":
-        puntaje_total = sum(respuestas.values())
-        resultados["dimensiones"] = {"Puntaje Total EAT": puntaje_total}
+    elif prueba == "EAT (Adherencia al Tratamiento)":
+        # Escala de 21 ítems dividida en los 3 factores exactos del Excel
+        f1 = sum([respuestas[f"item_{i}"] for i in range(1, 8)])
+        f2 = sum([respuestas[f"item_{i}"] for i in range(8, 15)])
+        f3 = sum([respuestas[f"item_{i}"] for i in range(15, 22)])
+        total = f1 + f2 + f3
         
-        if puntaje_total >= 20:
-            resultados["diagnostico"] = "Riesgo Clínico de TCA"
-            resultados["interpretacion"] = "Puntaje igual o superior a 20. Sugiere actitudes y comportamientos de alto riesgo relacionados con trastornos de la conducta alimentaria. Requiere evaluación especializada."
-        else:
-            resultados["diagnostico"] = "Bajo Riesgo"
-            resultados["interpretacion"] = "Puntaje dentro de los límites esperados. No se observan indicadores clínicos de riesgo en la conducta alimentaria."
-
-    elif prueba == "CAEPO (Afrontamiento Oncológico/Crónico)":
-        # Mapeo de las 7 dimensiones típicas del CAEPO
-        dim = {
-            "Enfrentamiento": sum([respuestas[f"item_{i}"] for i in [1, 8, 15, 22, 29, 36]]),
-            "Búsqueda de Info": sum([respuestas[f"item_{i}"] for i in [2, 9, 16, 23, 30, 37]]),
-            "Religión": sum([respuestas[f"item_{i}"] for i in [3, 10, 17, 24, 31, 38]]),
-            "Evitación": sum([respuestas[f"item_{i}"] for i in [4, 11, 18, 25, 32, 39]]),
-            "Negación": sum([respuestas[f"item_{i}"] for i in [5, 12, 19, 26, 33, 40]]),
-            "Aceptación": sum([respuestas[f"item_{i}"] for i in [6, 13, 20, 27, 34]]),
-            "Pasividad": sum([respuestas[f"item_{i}"] for i in [7, 14, 21, 28, 35]])
+        resultados["dimensiones"] = {
+            "Control Ingesta": f1, 
+            "Seguimiento Médico": f2, 
+            "Autoeficacia": f3
         }
-        resultados["dimensiones"] = dim
-        estilo_predominante = max(dim, key=dim.get)
-        resultados["diagnostico"] = f"Estilo predominante: {estilo_predominante}"
-        resultados["interpretacion"] = f"El estilo de afrontamiento más utilizado por el paciente es '{estilo_predominante}'. Se debe evaluar si este estilo es adaptativo frente a las demandas del tratamiento en el servicio."
+        
+        # Puntos de corte exactos
+        if total >= 85:
+            resultados["diagnostico"] = "Buena Adherencia"
+        elif total >= 64:
+            resultados["diagnostico"] = "Regular Adherencia"
+        else:
+            resultados["diagnostico"] = "Mala Adherencia"
+            
+        resultados["interpretacion"] = f"Puntaje total de {total}. Evaluar contingencias o barreras ambientales en las dimensiones que reportan puntuación baja para fortalecer la conducta."
+
+    elif prueba == "CAEPO (Afrontamiento Oncológico)":
+        # ÍTEM 36 INVERSO: Si marca 3 suma 0, si marca 0 suma 3.
+        resp_36_inv = 3 - respuestas["item_36"]
+        
+        # Sumatorias por subescalas exactas
+        ela = sum([respuestas[f"item_{i}"] for i in [1, 8, 15, 22, 29]]) + resp_36_inv
+        ace = sum([respuestas[f"item_{i}"] for i in [2, 9, 16, 23, 30, 37]])
+        bas = sum([respuestas[f"item_{i}"] for i in [3, 10, 17, 24, 31, 38]])
+        apa = sum([respuestas[f"item_{i}"] for i in [4, 11, 18, 25, 32, 39]])
+        prp = sum([respuestas[f"item_{i}"] for i in [5, 12, 19, 26, 33, 40]])
+        hd = sum([respuestas[f"item_{i}"] for i in [6, 13, 20, 27, 34]])
+        n = sum([respuestas[f"item_{i}"] for i in [7, 14, 21, 28, 35]])
+        
+        t_pos = ela + ace + bas
+        t_neg = apa + prp + hd + n
+        
+        resultados["dimensiones"] = {
+            "Enfrentamiento": ela, "Autocontrol": ace, "Apoyo Social": bas,
+            "Preocupación": apa, "Pasividad": prp, "Huida": hd, "Negación": n
+        }
+        resultados["diagnostico"] = f"Factor Positivo: {t_pos} | Factor Negativo: {t_neg}"
+        resultados["interpretacion"] = "Contrastar el factor positivo vs el negativo en el baremo de Decatipos (Sten) para determinar si la tendencia diferencial es predominantemente adaptativa o desadaptativa."
 
     elif prueba == "FACES IV (Funcionamiento Familiar)":
-        # Sumatoria directa de las 8 escalas
-        dim = {
-            "Cohesión": sum([respuestas[f"item_{i}"] for i in [1, 7, 13, 19, 25, 31, 37]]),
-            "Flexibilidad": sum([respuestas[f"item_{i}"] for i in [2, 8, 14, 20, 26, 32, 38]]),
-            "Desligada": sum([respuestas[f"item_{i}"] for i in [3, 9, 15, 21, 27, 33, 39]]),
-            "Aglutinada": sum([respuestas[f"item_{i}"] for i in [4, 10, 16, 22, 28, 34, 40]]),
-            "Rígida": sum([respuestas[f"item_{i}"] for i in [5, 11, 17, 23, 29, 35, 41]]),
-            "Caótica": sum([respuestas[f"item_{i}"] for i in [6, 12, 18, 24, 30, 36, 42]]),
-            "Comunicación": sum([respuestas[f"item_{i}"] for i in range(43, 53)]),
-            "Satisfacción": sum([respuestas[f"item_{i}"] for i in range(53, 63)])
+        cohesion = sum([respuestas[f"item_{i}"] for i in [1, 7, 13, 19, 25, 31, 37]])
+        flexibilidad = sum([respuestas[f"item_{i}"] for i in [2, 8, 14, 20, 26, 32, 38]])
+        desunion = sum([respuestas[f"item_{i}"] for i in [3, 9, 15, 21, 27, 33, 39]])
+        sobre_inv = sum([respuestas[f"item_{i}"] for i in [4, 10, 16, 22, 28, 34, 40]])
+        rigido = sum([respuestas[f"item_{i}"] for i in [5, 11, 17, 23, 29, 35, 41]])
+        caotico = sum([respuestas[f"item_{i}"] for i in [6, 12, 18, 24, 30, 36, 42]])
+        comunicacion = sum([respuestas[f"item_{i}"] for i in range(43, 53)])
+        satisfaccion = sum([respuestas[f"item_{i}"] for i in range(53, 63)])
+        
+        # Fórmulas de Ratios del Modelo de Olson
+        ratio_cohesion = cohesion / ((desunion + sobre_inv) / 2) if (desunion + sobre_inv) > 0 else 0
+        ratio_flex = flexibilidad / ((rigido + caotico) / 2) if (rigido + caotico) > 0 else 0
+        
+        resultados["dimensiones"] = {
+            "Cohesión": cohesion, "Flexibilidad": flexibilidad,
+            "Desunión": desunion, "Aglutinamiento": sobre_inv,
+            "Rígido": rigido, "Caótico": caotico
         }
-        resultados["dimensiones"] = dim
-        resultados["diagnostico"] = "Perfil Familiar Multidimensional"
-        resultados["interpretacion"] = "Evaluación de la dinámica familiar estructurada en escalas balanceadas (Cohesión/Flexibilidad) y desbalanceadas. Contrastar las sumatorias brutas con el manual para ubicar el tipo de sistema familiar."
+        resultados["diagnostico"] = f"Ratios -> Cohesión: {ratio_cohesion:.2f} | Flexibilidad: {ratio_flex:.2f}"
+        resultados["interpretacion"] = f"Puntajes brutos -> Comunicación: {comunicacion} | Satisfacción: {satisfaccion}. Ratios mayores a 1 indican un sistema balanceado."
 
     return resultados
