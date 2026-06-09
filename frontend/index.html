@@ -2575,29 +2575,75 @@
     // ════════════════════════════════════════════════════════════
     let agendaFilter = 'all';
 
-    async function loadAgenda() {
-      const data = await apiFetch(`/agenda?fecha=${todayISO()}`);
-      const kpi = await apiFetch(`/kpi?fecha=${todayISO()}`);
+    // Normaliza una fila de agenda independientemente de si viene
+    // del backend FastAPI (campos ya mapeados) o de Supabase JS raw
+    function normalizarCita(row) {
+      // Supabase devuelve join como objeto anidado: pacientes: {nombres, apellidos, servicio}
+      const p = row.pacientes || {};
+      const nombreCompleto = row.paciente ||
+        `${p.apellidos || ''}, ${p.nombres || ''}`.replace(/^, |, $/g, '').trim() || '–';
+      // hora: "07:00:00" → "07:00"
+      const hora = (row.hora || '08:00').substring(0, 5);
+      return {
+        id: row.id,
+        dni: row.dni_paciente || row.dni || '',
+        paciente: nombreCompleto,
+        tipo: row.tipo_cita || row.tipo || '–',
+        hora,
+        estado: row.estado || 'Pendiente',
+        servicio: row.servicio || p.servicio || '–',
+      };
+    }
 
-      // KPIs — solo si hay respuesta real
-      if (kpi) {
-        const kpiMap = {
-          'kpi-atendidos': kpi.atendidos,
-          'kpi-pendientes': kpi.pendientes,
-          'kpi-activos': kpi.activos,
-          'kpi-alertas': kpi.alertas,
-        };
-        Object.entries(kpiMap).forEach(([id, val]) => {
-          const el = document.getElementById(id);
-          if (el) countUp(el, val);
-        });
-        const atEl = document.getElementById('kpi-atendidos-delta');
-        if (atEl) atEl.textContent = `↑ +${kpi.atendidos} vs ayer`;
+    async function loadAgenda() {
+      let items = [];
+      let kpiData = null;
+
+      // Intentar primero con Supabase JS directo (funciona aunque el backend falle)
+      if (supabase_client && SUPABASE_URL !== 'https://TU_PROYECTO.supabase.co') {
+        try {
+          const fecha = todayISO();
+          const { data, error } = await supabase_client
+            .from('agenda')
+            .select('*, pacientes(nombres, apellidos, servicio)')
+            .eq('fecha', fecha)
+            .order('hora');
+          if (!error && data) {
+            items = data.map(normalizarCita);
+            // KPIs desde los datos
+            const atendidos = items.filter(i => i.estado === 'Atendido').length;
+            const pendientes = items.filter(i => i.estado === 'Pendiente').length;
+            const { count: activos } = await supabase_client
+              .from('pacientes').select('id', { count: 'exact', head: true });
+            kpiData = { atendidos, pendientes, activos: activos || 0, alertas: 0 };
+          }
+        } catch (e) { console.warn('Supabase directo falló:', e.message); }
       }
 
-      // Agenda — array vacío si no hay backend
-      renderAgendaTable(data || []);
-      renderAgendaList(data || []);
+      // Fallback: intentar el backend FastAPI
+      if (!items.length) {
+        const backendData = await apiFetch(`/agenda?fecha=${todayISO()}`);
+        if (backendData) items = backendData.map(normalizarCita);
+        const backendKpi = await apiFetch(`/kpi?fecha=${todayISO()}`);
+        if (backendKpi) kpiData = backendKpi;
+      }
+
+      // Actualizar KPIs
+      if (kpiData) {
+        [['kpi-atendidos', kpiData.atendidos],
+        ['kpi-pendientes', kpiData.pendientes],
+        ['kpi-activos', kpiData.activos],
+        ['kpi-alertas', kpiData.alertas]
+        ].forEach(([id, val]) => {
+          const el = document.getElementById(id);
+          if (el) countUp(el, val || 0);
+        });
+        const atEl = document.getElementById('kpi-atendidos-delta');
+        if (atEl) atEl.textContent = `↑ +${kpiData.atendidos} vs ayer`;
+      }
+
+      renderAgendaTable(items);
+      renderAgendaList(items);
     }
 
     function renderAgendaTable(items) {
@@ -3922,33 +3968,121 @@
     // ════════════════════════════════════════════════════════════
     async function checkSystemStatus() {
       const el = document.getElementById('system-status');
-      const data = await apiFetch('/status') || {
-        db: 'Supabase (demo)', tablas: ['pacientes', 'agenda', 'fichas', 'evolucion'],
-        version: '1.0.0', modo: 'Demo local'
-      };
+      if (!el) return;
+
+      if (!supabase_client || SUPABASE_URL === 'https://TU_PROYECTO.supabase.co') {
+        el.innerHTML = `<div>⚠️ Supabase no configurado. Agrega tus claves en el HTML.</div>`;
+        return;
+      }
+
+      el.innerHTML = '<div style="color:var(--muted);">Verificando conexión...</div>';
+      const tablas = ['pacientes', 'agenda', 'fichas', 'sala_maquinas', 'atenciones', 'evolucion'];
+      const resultados = [];
+      let counts = {};
+      for (const t of tablas) {
+        const { count, error } = await supabase_client
+          .from(t).select('id', { count: 'exact', head: true });
+        counts[t] = count;
+        resultados.push({ tabla: t, ok: !error, count: count || 0 });
+      }
+
       el.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:8px;">
-      <div>🗄️ <strong>Base de datos:</strong> ${data.db || 'Supabase PostgreSQL'}</div>
-      <div>🔧 <strong>Versión:</strong> ${data.version || '1.0.0'}</div>
-      <div>🟢 <strong>Modo:</strong> ${data.modo || 'Producción'}</div>
-      <div>📊 <strong>Tablas:</strong> ${(data.tablas || []).join(', ')}</div>
+      <div>🗄️ <strong>Base de datos:</strong> Supabase PostgreSQL · Conectado ✅</div>
+      <div>🔧 <strong>Versión:</strong> 2.0.0 · <strong>Modo:</strong> Producción</div>
+      <table style="width:100%;font-size:12px;margin-top:8px;border-collapse:collapse;">
+        <tr style="color:var(--muted);font-weight:600;">
+          <td style="padding:4px 8px;">Tabla</td>
+          <td style="padding:4px 8px;">Estado</td>
+          <td style="padding:4px 8px;">Registros</td>
+        </tr>
+        ${resultados.map(r => `
+          <tr style="border-top:1px solid var(--border);">
+            <td style="padding:5px 8px;font-family:monospace;">${r.tabla}</td>
+            <td style="padding:5px 8px;">${r.ok ? '✅ OK' : '❌ Error'}</td>
+            <td style="padding:5px 8px;">${r.count}</td>
+          </tr>`).join('')}
+      </table>
     </div>`;
     }
 
     async function accionSistema(accion) {
-      const mensajes = {
-        backup: 'Iniciando respaldo de base de datos...',
-        vacuum: 'Esta acción es irreversible. ¿Confirmar?',
-        schema: 'Actualizando esquema de tablas...',
-        export: 'Preparando exportación CSV...',
-      };
       if (accion === 'vacuum') {
-        if (!confirm('¿Estás seguro de que deseas vaciar los registros? Esta acción no se puede deshacer.')) return;
+        if (!confirm(
+          '⚠️ ATENCIÓN: Esto eliminará TODOS los registros de agenda, fichas, atenciones y evolución.\n\n' +
+          'Los datos de pacientes (DNI, nombre, etc.) NO se borran.\n\n' +
+          '¿Confirmas esta acción? Es irreversible.'
+        )) return;
+
+        if (!supabase_client || SUPABASE_URL === 'https://TU_PROYECTO.supabase.co') {
+          showToast('Conecta Supabase primero', 'error'); return;
+        }
+        showToast('Vaciando registros...');
+        try {
+          // Borrar en orden respetando foreign keys
+          await supabase_client.from('evolucion').delete().neq('id', 0);
+          await supabase_client.from('fichas').delete().neq('id', 0);
+          await supabase_client.from('atenciones').delete().neq('id', 0);
+          await supabase_client.from('sala_maquinas').delete().neq('id', 0);
+          await supabase_client.from('agenda').delete().neq('id', 0);
+          showToast('Registros vaciados correctamente ✓');
+          loadAgenda();
+        } catch (e) {
+          showToast('Error al vaciar: ' + e.message, 'error');
+        }
+        return;
       }
-      showToast(mensajes[accion] || 'Ejecutando...');
-      const result = await apiFetch('/mantenimiento', 'POST', { accion });
-      if (result) showToast(`Acción '${accion}' completada`);
-      else showToast(`Acción '${accion}' completada (demo)`);
+
+      if (accion === 'export') {
+        if (!supabase_client || SUPABASE_URL === 'https://TU_PROYECTO.supabase.co') {
+          showToast('Conecta Supabase primero', 'error'); return;
+        }
+        showToast('Preparando exportación...');
+        try {
+          const { data } = await supabase_client.from('pacientes').select('*').order('apellidos');
+          if (!data || !data.length) { showToast('Sin datos para exportar', 'error'); return; }
+          // Convertir a CSV
+          const keys = Object.keys(data[0]);
+          const csv = [
+            keys.join(','),
+            ...data.map(row => keys.map(k => `"${(row[k] ?? '').toString().replace(/"/g, '""')}"`).join(','))
+          ].join('\n');
+          const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = `pacientes_${todayISO()}.csv`; a.click();
+          URL.revokeObjectURL(url);
+          showToast('CSV exportado correctamente ✓');
+        } catch (e) {
+          showToast('Error al exportar: ' + e.message, 'error');
+        }
+        return;
+      }
+
+      if (accion === 'backup') {
+        showToast('Los backups automáticos los gestiona Supabase. Ve a tu dashboard → Storage.');
+        return;
+      }
+
+      if (accion === 'schema') {
+        showToast('Verificando tablas...');
+        try {
+          const tablas = ['pacientes', 'agenda', 'fichas', 'sala_maquinas', 'atenciones', 'evolucion'];
+          const resultados = [];
+          for (const t of tablas) {
+            const { error } = await supabase_client.from(t).select('id', { head: true, count: 'exact' });
+            resultados.push(`${error ? '❌' : '✅'} ${t}`);
+          }
+          document.getElementById('system-status').innerHTML =
+            resultados.map(r => `<div>${r}</div>`).join('');
+          showToast('Esquema verificado ✓');
+        } catch (e) {
+          showToast('Error: ' + e.message, 'error');
+        }
+        return;
+      }
+
+      showToast(`Acción '${accion}' no reconocida`, 'error');
     }
 
     // ════════════════════════════════════════════════════════════
