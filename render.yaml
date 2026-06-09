@@ -1,0 +1,31 @@
+# render.yaml
+# Deploy automático en Render.com
+# Documentación: https://render.com/docs/render-yaml-reference
+
+services:
+  - type: web
+    name: psiconefrologia-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+
+    # Variables de entorno – configúralas en Render → Environment
+    # NUNCA las pongas directamente aquí si el repo es público
+    envVars:
+      - key: SUPABASE_URL
+        sync: false          # se configura manualmente en el dashboard
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: ENVIRONMENT
+        value: production
+      - key: RENDER
+        value: "true"
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
+    # Render Free tier: 512 MB RAM, spin-down tras inactividad
+    # Para producción usa el plan Starter ($7/mes) para evitar cold starts

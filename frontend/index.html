@@ -1,0 +1,2293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Psiconefrología – HNRPP EsSalud</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!--  SUPABASE CONFIG  — reemplaza con tus claves reales         -->
+<!--  NUNCA subas este archivo con claves reales al repo         -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<script>
+  const SUPABASE_URL  = 'https://TU_PROYECTO.supabase.co';   // ← reemplaza
+  const SUPABASE_ANON = 'TU_ANON_KEY';                        // ← reemplaza
+  const API_BASE      = '/api';  // FastAPI backend en Render (mismo dominio o CORS abierto)
+</script>
+<!-- Supabase JS SDK (auth real) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+<style>
+  :root {
+    --teal-900: #00332B;
+    --teal-700: #00695C;
+    --teal-500: #00897B;
+    --teal-400: #00A896;
+    --teal-200: #80CBC4;
+    --teal-50:  #E0F2F1;
+    --red-soft: #EF5350;
+    --amber:    #FFB300;
+    --bg:       #F2F5F4;
+    --card:     #FFFFFF;
+    --text:     #1A1A1A;
+    --muted:    #6B7280;
+    --border:   #E5E9E8;
+    --font-h:   'Syne', sans-serif;
+    --font-b:   'DM Sans', sans-serif;
+    --r-sm: 10px;
+    --r-md: 16px;
+    --r-lg: 24px;
+    --r-xl: 32px;
+    --shadow: 0 4px 20px rgba(0,137,123,0.08);
+    --shadow-lg: 0 12px 40px rgba(0,137,123,0.14);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: var(--font-b);
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ─── RIPPLE EFFECT (para todos los botones) ─ */
+  .btn { position: relative; overflow: hidden; }
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.35);
+    transform: scale(0);
+    animation: ripple-anim .55s linear;
+    pointer-events: none;
+  }
+  @keyframes ripple-anim {
+    to { transform: scale(4); opacity: 0; }
+  }
+
+  /* ─── SIDEBAR ──────────────────────────────── */
+  .sidebar {
+    width: 270px;
+    min-width: 270px;
+    background: linear-gradient(180deg, var(--teal-700) 0%, var(--teal-900) 100%);
+    display: flex;
+    flex-direction: column;
+    padding: 28px 16px;
+    gap: 6px;
+    overflow-y: auto;
+    transition: width .35s cubic-bezier(.4,0,.2,1);
+    position: relative;
+    z-index: 10;
+  }
+
+  .sidebar-logo {
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 10px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 12px;
+  }
+  .logo-icon {
+    width: 42px; height: 42px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    backdrop-filter: blur(8px);
+    flex-shrink: 0;
+  }
+  .logo-text h2 {
+    font-family: var(--font-h);
+    font-size: 15px; color: #fff; line-height: 1.2;
+  }
+  .logo-text span {
+    font-size: 11px; color: rgba(255,255,255,0.5);
+    font-weight: 400;
+  }
+
+  .search-box {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 50px;
+    padding: 9px 16px;
+    margin-bottom: 8px;
+    transition: background .2s;
+  }
+  .search-box:focus-within {
+    background: rgba(255,255,255,0.18);
+    border-color: rgba(255,255,255,0.3);
+  }
+  .search-box i { color: rgba(255,255,255,0.5); font-size: 13px; }
+  .search-box input {
+    background: transparent; border: none; outline: none;
+    color: #fff; font-family: var(--font-b); font-size: 13px;
+    width: 100%;
+  }
+  .search-box input::placeholder { color: rgba(255,255,255,0.4); }
+
+  /* search results dropdown */
+  .search-results {
+    background: #fff;
+    border-radius: var(--r-sm);
+    box-shadow: var(--shadow-lg);
+    margin: 4px 0 8px;
+    overflow: hidden;
+    display: none;
+  }
+  .search-results.show { display: block; }
+  .search-result-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    transition: background .15s;
+  }
+  .search-result-item:last-child { border-bottom: none; }
+  .search-result-item:hover { background: var(--teal-50); }
+  .search-result-item .dni-tag {
+    font-size: 11px; color: var(--muted); margin-left: 6px;
+  }
+
+  .nav-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.3); text-transform: uppercase;
+    padding: 12px 10px 4px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 14px;
+    border-radius: 50px;
+    color: rgba(255,255,255,0.72);
+    font-size: 13.5px; font-weight: 500;
+    cursor: pointer;
+    transition: all .25s cubic-bezier(.4,0,.2,1);
+    user-select: none;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .nav-item i { font-size: 15px; width: 18px; text-align: center; flex-shrink:0; }
+  .nav-item:hover {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    transform: translateX(3px);
+  }
+  .nav-item.active {
+    background: #fff;
+    color: var(--teal-700);
+    font-weight: 600;
+    border-color: transparent;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    transform: translateX(0);
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .status-card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: var(--r-md);
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  /* usuario logueado en sidebar */
+  .user-chip {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50px;
+    padding: 8px 14px;
+    margin-bottom: 10px;
+  }
+  .user-chip .uc-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; color: #fff; flex-shrink: 0;
+  }
+  .user-chip .uc-name { font-size: 12px; color: rgba(255,255,255,.8); font-weight: 500; }
+  .user-chip .uc-role { font-size: 10px; color: rgba(255,255,255,.4); }
+
+  .status-dot {
+    display: inline-block; width: 7px; height: 7px;
+    background: #4CAF50; border-radius: 50%;
+    animation: pulse-dot 2s infinite;
+    margin-right: 6px;
+  }
+  @keyframes pulse-dot {
+    0%,100%{box-shadow:0 0 0 0 rgba(76,175,80,.6)}
+    50%{box-shadow:0 0 0 5px rgba(76,175,80,0)}
+  }
+  .logout-btn {
+    width: 100%; padding: 10px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 50px;
+    color: rgba(255,255,255,0.6);
+    font-family: var(--font-b); font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all .2s;
+  }
+  .logout-btn:hover { background: rgba(239,83,80,0.2); color: #fff; border-color: rgba(239,83,80,0.4); }
+
+  /* ─── MAIN CONTENT ──────────────────────────── */
+  .main {
+    flex: 1; overflow-y: auto; padding: 32px;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+
+  /* ─── PAGE HEADER ─────────────────────────── */
+  .page-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    animation: slideDown .4s cubic-bezier(.4,0,.2,1);
+  }
+  @keyframes slideDown {
+    from { opacity:0; transform:translateY(-16px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .page-header h1 {
+    font-family: var(--font-h);
+    font-size: 26px; color: var(--text); line-height: 1.2;
+  }
+  .page-header .subtitle { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  .header-actions { display: flex; gap: 10px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 18px;
+    border-radius: 50px; font-family: var(--font-b);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: all .25s cubic-bezier(.4,0,.2,1);
+    border: none; white-space: nowrap;
+    position: relative; overflow: hidden;
+  }
+  .btn:active { transform: scale(0.96) !important; }
+  .btn-primary {
+    background: var(--teal-500);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(0,137,123,0.35);
+  }
+  .btn-primary:hover {
+    background: var(--teal-400);
+    box-shadow: 0 6px 20px rgba(0,137,123,0.45);
+    transform: translateY(-2px);
+  }
+  .btn-outline {
+    background: var(--card); color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .btn-outline:hover { border-color: var(--teal-200); background: var(--teal-50); transform: translateY(-1px); }
+  .btn-danger {
+    background: var(--red-soft); color: #fff;
+    box-shadow: 0 4px 14px rgba(239,83,80,0.3);
+  }
+  .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(239,83,80,0.4); }
+  /* loading state */
+  .btn.loading { pointer-events: none; opacity: .7; }
+  .btn.loading::after {
+    content: '';
+    position: absolute; right: 14px;
+    width: 13px; height: 13px;
+    border: 2px solid rgba(255,255,255,.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── KPI ROW ─────────────────────────────── */
+  .kpi-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    animation: fadeInUp .45s .1s both;
+  }
+  @keyframes fadeInUp {
+    from { opacity:0; transform:translateY(20px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .kpi-card {
+    background: var(--card);
+    border-radius: var(--r-lg);
+    padding: 20px;
+    border: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 10px;
+    position: relative; overflow: hidden;
+    transition: transform .25s, box-shadow .25s;
+    cursor: default;
+  }
+  .kpi-card::before {
+    content:''; position: absolute;
+    top:-30px; right:-30px; width:80px; height:80px;
+    border-radius: 50%; opacity: .07;
+  }
+  .kpi-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+  .kpi-card.green::before  { background: #00897B; }
+  .kpi-card.blue::before   { background: #1565C0; }
+  .kpi-card.amber::before  { background: #F57F17; }
+  .kpi-card.red::before    { background: #C62828; }
+  .kpi-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+  }
+  .kpi-icon.green { background: #E0F2F1; color: var(--teal-500); }
+  .kpi-icon.blue  { background: #E3F2FD; color: #1565C0; }
+  .kpi-icon.amber { background: #FFF8E1; color: #F57F17; }
+  .kpi-icon.red   { background: #FFEBEE; color: #C62828; }
+  .kpi-num { font-size: 28px; font-weight: 600; font-family: var(--font-h); line-height: 1; }
+  .kpi-label { font-size: 12.5px; color: var(--muted); }
+  .kpi-delta { font-size: 11px; color: var(--teal-500); font-weight: 600; }
+  /* KPI number count-up animation */
+  .kpi-num.counting { animation: pop .3s ease; }
+  @keyframes pop { 0%{transform:scale(.8)} 50%{transform:scale(1.1)} 100%{transform:scale(1)} }
+
+  /* ─── CONTENT GRID ────────────────────────── */
+  .content-grid {
+    display: grid; grid-template-columns: 1.6fr 1fr; gap: 20px;
+    animation: fadeInUp .45s .2s both;
+  }
+  .card {
+    background: var(--card); border-radius: var(--r-lg);
+    border: 1px solid var(--border);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    transition: box-shadow .25s;
+  }
+  .card:hover { box-shadow: var(--shadow-lg); }
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .card-title { font-family: var(--font-h); font-size: 16px; font-weight: 600; }
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 4px 10px; border-radius: 50px;
+    font-size: 11px; font-weight: 600;
+  }
+  .badge-green  { background: #E0F2F1; color: var(--teal-700); }
+  .badge-amber  { background: #FFF8E1; color: #E65100; }
+  .badge-red    { background: #FFEBEE; color: #C62828; }
+  .badge-blue   { background: #E3F2FD; color: #1565C0; }
+
+  /* ─── TABLE ───────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font-size: 11px; font-weight: 600; letter-spacing:.8px;
+    text-transform: uppercase; color: var(--muted);
+    padding: 0 12px 12px; text-align: left;
+  }
+  td { padding: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr { transition: background .15s; }
+  tbody tr:hover { background: var(--teal-50); }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--teal-50); color: var(--teal-700);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; flex-shrink: 0;
+  }
+  .patient-cell { display: flex; align-items: center; gap: 10px; }
+
+  /* ─── AGENDA / CALENDAR PANEL ────────────── */
+  .agenda-list { display: flex; flex-direction: column; gap: 10px; }
+  .agenda-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 14px;
+    background: var(--bg); border-radius: var(--r-sm);
+    border: 1px solid var(--border);
+    transition: all .2s;
+    cursor: pointer;
+  }
+  .agenda-item:hover {
+    background: var(--teal-50); border-color: var(--teal-200);
+    transform: translateX(4px);
+  }
+  .agenda-time {
+    font-size: 12px; font-weight: 600; color: var(--teal-500);
+    min-width: 44px;
+  }
+  .agenda-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--teal-400); flex-shrink: 0;
+  }
+  .agenda-dot.orange { background: var(--amber); }
+  .agenda-dot.red    { background: var(--red-soft); }
+  .agenda-name { font-size: 13px; font-weight: 500; }
+  .agenda-type { font-size: 11px; color: var(--muted); }
+
+  /* ─── TABS ────────────────────────────────── */
+  .tabs {
+    display: flex; gap: 4px;
+    background: var(--bg); border-radius: 50px; padding: 4px;
+    width: fit-content; margin-bottom: 20px;
+  }
+  .tab {
+    padding: 7px 16px; border-radius: 50px;
+    font-size: 12.5px; font-weight: 600; color: var(--muted);
+    cursor: pointer; transition: all .2s;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { background: var(--card); color: var(--teal-600); box-shadow: var(--shadow); color: var(--teal-700); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ─── SALA MAP ─────────────────────────────── */
+  .sala-grid {
+    display: grid; grid-template-columns: repeat(4,1fr); gap: 10px;
+    margin-top: 8px;
+  }
+  .cama-card {
+    border-radius: var(--r-sm);
+    padding: 12px;
+    border: 1.5px dashed var(--border);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    cursor: pointer;
+    transition: all .22s cubic-bezier(.4,0,.2,1);
+    position: relative;
+    min-height: 90px;
+    justify-content: center;
+  }
+  .cama-card.occupied {
+    background: var(--teal-50); border-style: solid;
+    border-color: var(--teal-200);
+  }
+  .cama-card:hover { transform: scale(1.05) translateY(-2px); box-shadow: var(--shadow-lg); }
+  .cama-card.occupied:hover { border-color: var(--teal-400); }
+  .cama-num { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: .8px; }
+  .cama-patient { font-size: 11px; font-weight: 600; color: var(--teal-700); text-align: center; line-height: 1.3; }
+  .cama-empty { font-size: 11px; color: var(--muted); }
+  .cama-icon { font-size: 20px; color: var(--teal-200); }
+
+  /* ─── SECTION LABEL ────────────────────────── */
+  .section-label {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  /* ─── PROGRESS BAR ──────────────────────────── */
+  .prog-wrap { background: var(--bg); border-radius: 50px; height: 6px; overflow: hidden; }
+  .prog-fill {
+    height: 100%; background: var(--teal-400); border-radius: 50px;
+    transition: width .6s cubic-bezier(.4,0,.2,1);
+  }
+
+  /* ─── FORM FIELDS ──────────────────────────── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1/-1; }
+  label.field-label {
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .6px;
+  }
+  input[type=text], input[type=date], input[type=number], input[type=password],
+  input[type=email], select, textarea {
+    width: 100%; padding: 10px 14px;
+    border: 1.5px solid var(--border); border-radius: var(--r-sm);
+    font-family: var(--font-b); font-size: 13.5px; color: var(--text);
+    background: #fff; outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    -webkit-appearance: none;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--teal-400);
+    box-shadow: 0 0 0 3px rgba(0,168,150,.15);
+  }
+  textarea { resize: vertical; min-height: 80px; }
+
+  /* ─── ADHERENCIA SLIDERS ──────────────────── */
+  .adh-row {
+    display: grid; grid-template-columns: repeat(4,1fr); gap: 10px;
+    margin-top: 6px;
+  }
+  .adh-item { display: flex; flex-direction: column; gap: 4px; }
+  .adh-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
+  .adh-val {
+    font-size: 20px; font-weight: 600; font-family: var(--font-h);
+    color: var(--teal-500);
+    transition: color .2s;
+  }
+  input[type=range] {
+    -webkit-appearance: none; width:100%; height:5px;
+    background: var(--border); border-radius: 50px; outline: none;
+    cursor: pointer; transition: background .2s;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px;
+    background: var(--teal-500); border-radius: 50%;
+    cursor: pointer; transition: transform .15s, box-shadow .15s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.25);
+    box-shadow: 0 0 0 4px rgba(0,137,123,.2);
+  }
+
+  /* ─── EXAMEN MENTAL GRID ──────────────────── */
+  .mental-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  }
+  .mental-item {
+    background: var(--bg); border-radius: var(--r-sm);
+    padding: 14px; border: 1px solid var(--border);
+    transition: border-color .2s;
+  }
+  .mental-item:focus-within { border-color: var(--teal-400); }
+  .mental-item-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .8px; color: var(--muted); margin-bottom: 8px;
+  }
+
+  /* ─── LOGIN OVERLAY ─────────────────────── */
+  #login-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: linear-gradient(135deg, var(--teal-900) 0%, #001f1a 100%);
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity .4s ease;
+  }
+  #login-overlay.hidden {
+    opacity: 0; pointer-events: none;
+    transition: opacity .4s ease;
+  }
+  .login-card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--r-xl);
+    padding: 44px 40px;
+    width: 400px; max-width: 95vw;
+    backdrop-filter: blur(12px);
+    animation: slideDown .5s ease;
+  }
+  .login-card h2 {
+    font-family: var(--font-h);
+    font-size: 26px; color: #fff; margin-bottom: 6px;
+  }
+  .login-card .sub {
+    font-size: 12.5px; color: rgba(255,255,255,.4); margin-bottom: 28px;
+  }
+  .login-field { margin-bottom: 14px; }
+  .login-field label {
+    display: block; font-size: 11.5px; font-weight: 600;
+    color: rgba(255,255,255,.45); text-transform: uppercase;
+    letter-spacing: .8px; margin-bottom: 6px;
+  }
+  .login-field input {
+    width: 100%; background: rgba(255,255,255,0.08);
+    border: 1.5px solid rgba(255,255,255,0.12);
+    border-radius: var(--r-sm); padding: 12px 16px;
+    color: #fff; font-family: var(--font-b); font-size: 14px;
+    outline: none; transition: border-color .2s, background .2s;
+    -webkit-appearance: none;
+  }
+  .login-field input::placeholder { color: rgba(255,255,255,.35); }
+  .login-field input:focus { border-color: var(--teal-200); background: rgba(255,255,255,0.12); box-shadow: 0 0 0 3px rgba(0,168,150,.2); }
+  .btn-login {
+    width: 100%; padding: 13px; margin-top: 8px;
+    background: #fff; color: var(--teal-700);
+    font-family: var(--font-h); font-size: 14px; font-weight: 700;
+    border: none; border-radius: 50px; cursor: pointer;
+    transition: all .2s;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    position: relative; overflow: hidden;
+  }
+  .btn-login:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
+  .login-caption { font-size: 11.5px; color: rgba(255,255,255,.3); text-align: center; margin-top: 20px; line-height: 1.6; }
+  .login-error {
+    background: rgba(239,83,80,.2);
+    border: 1px solid rgba(239,83,80,.4);
+    border-radius: 8px; padding: 10px 14px;
+    color: #FFCDD2; font-size: 13px; margin-bottom: 12px;
+    display: none;
+    animation: shake .4s ease;
+  }
+  @keyframes shake {
+    0%,100%{transform:translateX(0)}
+    20%{transform:translateX(-6px)}
+    40%{transform:translateX(6px)}
+    60%{transform:translateX(-4px)}
+    80%{transform:translateX(4px)}
+  }
+
+  /* ─── NOTIFICATION TOAST ───────────────────── */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px;
+    background: var(--teal-700); color: #fff;
+    padding: 12px 20px; border-radius: 50px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    transform: translateY(20px); opacity: 0;
+    transition: all .3s cubic-bezier(.4,0,.2,1);
+    z-index: 200; display: flex; align-items: center; gap: 8px;
+    pointer-events: none;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.error { background: var(--red-soft); }
+
+  /* ─── HIGHLIGHT INFO BOX ───────────────────── */
+  .info-box {
+    background: var(--teal-50); border-left: 3px solid var(--teal-400);
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+    padding: 12px 16px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  .info-box strong { color: var(--teal-700); }
+
+  /* ─── MODAL ────────────────────────────────── */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 50;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s;
+  }
+  .modal-bg.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--card); border-radius: var(--r-lg);
+    padding: 32px; width: 560px; max-width: 95vw;
+    transform: scale(.95) translateY(10px);
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal-bg.open .modal { transform: scale(1) translateY(0); }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .modal-title { font-family: var(--font-h); font-size: 18px; }
+  .modal-close {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--bg); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: var(--muted);
+    transition: all .2s;
+  }
+  .modal-close:hover { background: var(--border); color: var(--text); }
+
+  /* ─── ACTIVE PAGE ─────────────────────────── */
+  .page { display: none; }
+  .page.active { display: flex; flex-direction: column; gap: 24px; animation: fadeInUp .35s; }
+
+  /* ─── SKELETON LOADER ─────────────────────── */
+  .skeleton {
+    background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.2s infinite;
+    border-radius: 6px;
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  /* ─── EMPTY STATE ─────────────────────────── */
+  .empty-state {
+    text-align: center; padding: 60px;
+    color: var(--muted);
+  }
+  .empty-state i { font-size: 44px; color: var(--border); margin-bottom: 14px; display: block; }
+  .empty-state h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .empty-state p { font-size: 13px; }
+
+  /* ─── METRIC INLINE ───────────────────────── */
+  .metric-inline { display: flex; align-items: baseline; gap: 6px; }
+  .metric-big { font-family: var(--font-h); font-size: 22px; font-weight: 600; }
+  .metric-unit { font-size: 12px; color: var(--muted); }
+
+  /* ─── RESPONSIVE ──────────────────────────── */
+  @media (max-width: 900px) {
+    .sidebar { width: 68px; min-width: 68px; padding: 20px 10px; }
+    .logo-text, .nav-item span, .sidebar-footer .status-card p, .nav-label,
+    .search-box { display: none; }
+    .nav-item { justify-content: center; padding: 12px; }
+    .sidebar-logo { justify-content: center; padding-bottom: 20px; }
+    .logout-btn span { display: none; }
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .content-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ─── SPINNER overlay ─────────────────────── */
+  .overlay-loader {
+    position: fixed; inset: 0; background: rgba(255,255,255,.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 90; display: none;
+  }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--teal-500);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═════════════════════ OVERLAY LOADER ═══════════════════════ -->
+<div class="overlay-loader" id="overlay-loader">
+  <div class="spinner"></div>
+</div>
+
+<!-- ═════════════════════ LOGIN OVERLAY ════════════════════════ -->
+<div id="login-overlay">
+  <div class="login-card">
+    <div style="font-size:36px; margin-bottom:14px;">🧠</div>
+    <h2>Psiconefrología</h2>
+    <p class="sub">HNRPP – EsSalud · Sistema de Gestión Clínica</p>
+    <div id="login-error" class="login-error">
+      <i class="fas fa-exclamation-circle"></i> Credenciales incorrectas. Intente nuevamente.
+    </div>
+    <div class="login-field">
+      <label>Correo institucional</label>
+      <input type="email" id="login-user" placeholder="usuario@essalud.gob.pe" />
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" />
+    </div>
+    <button class="btn-login" id="btn-login-submit" onclick="tryLogin()">
+      <i class="fas fa-sign-in-alt" style="margin-right:8px;"></i>Ingresar al Sistema
+    </button>
+    <p class="login-caption">Uso exclusivo para personal autorizado.<br>Hospital Nacional Ramiro Prialé Prialé</p>
+    <p style="font-size:10px;color:rgba(255,255,255,.2);text-align:center;margin-top:12px;">
+      ⚠️ Demo local: usuario <b style="color:rgba(255,255,255,.35);">psiconefro@essalud.gob.pe</b> · clave <b style="color:rgba(255,255,255,.35);">psiconefro_2026</b>
+    </p>
+  </div>
+</div>
+
+<!-- ═════════════════════ SIDEBAR ══════════════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">🧠</div>
+    <div class="logo-text">
+      <h2>Psiconefrología</h2>
+      <span>HNRPP · EsSalud</span>
+    </div>
+  </div>
+
+  <div class="search-box">
+    <i class="fas fa-search"></i>
+    <input type="text" placeholder="DNI o Apellido..." id="global-search"
+           oninput="globalSearch(this.value)" autocomplete="off">
+  </div>
+  <div class="search-results" id="search-results"></div>
+
+  <div class="nav-label">Principal</div>
+  <div class="nav-item active" onclick="navigate('agenda', this)">
+    <i class="fas fa-calendar-day"></i><span>Agenda</span>
+  </div>
+  <div class="nav-item" onclick="navigate('registro', this)">
+    <i class="fas fa-clipboard-list"></i><span>Registro de Atención</span>
+  </div>
+  <div class="nav-item" onclick="navigate('salas', this)">
+    <i class="fas fa-bed"></i><span>Mapa de Salas</span>
+  </div>
+
+  <div class="nav-label">Clínico</div>
+  <div class="nav-item" onclick="navigate('ficha', this)">
+    <i class="fas fa-file-medical"></i><span>Ficha Virtual</span>
+  </div>
+  <div class="nav-item" onclick="navigate('historia', this)">
+    <i class="fas fa-folder-open"></i><span>Historia Clínica</span>
+  </div>
+  <div class="nav-item" onclick="navigate('evolucion', this)">
+    <i class="fas fa-chart-line"></i><span>Evolución</span>
+  </div>
+  <div class="nav-item" onclick="navigate('psicometria', this)">
+    <i class="fas fa-brain"></i><span>Pruebas Psicométricas</span>
+  </div>
+
+  <div class="nav-label">Reportes</div>
+  <div class="nav-item" onclick="navigate('admin', this)">
+    <i class="fas fa-chart-bar"></i><span>Administración</span>
+  </div>
+  <div class="nav-item" onclick="navigate('informe', this)">
+    <i class="fas fa-file-chart-line"></i><span>Informe Mensual</span>
+  </div>
+  <div class="nav-item" onclick="navigate('mantenimiento', this)">
+    <i class="fas fa-cog"></i><span>Mantenimiento</span>
+  </div>
+
+  <div class="sidebar-footer">
+    <!-- chip usuario logueado -->
+    <div class="user-chip" id="user-chip">
+      <div class="uc-avatar" id="user-avatar">PS</div>
+      <div>
+        <div class="uc-name" id="user-name">Psiconefrología</div>
+        <div class="uc-role">Psicólogo/a</div>
+      </div>
+    </div>
+    <div class="status-card">
+      <p style="font-size:12px; color:rgba(255,255,255,.7); display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+        <i class="fas fa-hospital" style="font-size:12px;"></i> Servicio Psicología
+      </p>
+      <p style="font-size:11px; color:rgba(255,255,255,.4); margin-bottom:10px;">Hemodiálisis / DIPAC</p>
+      <div style="display:flex;align-items:center;font-size:11px;color:#A5D6A7;">
+        <span class="status-dot"></span> <span id="conn-status">Conectado</span>
+      </div>
+    </div>
+    <button class="logout-btn" onclick="logout()">
+      <i class="fas fa-sign-out-alt"></i><span>Cerrar Sesión</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ═════════════════════ MAIN CONTENT ═════════════════════════ -->
+<main class="main">
+
+  <!-- ── AGENDA ─────────────────────────────────── -->
+  <div class="page active" id="page-agenda">
+    <div class="page-header">
+      <div>
+        <h1>📅 Agenda del Día</h1>
+        <p class="subtitle" id="fecha-hoy">Cargando fecha...</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-outline" onclick="loadAgenda(); addRipple(event)">
+          <i class="fas fa-sync-alt"></i> Actualizar
+        </button>
+        <button class="btn btn-primary" onclick="openModal('modal-cita'); addRipple(event)">
+          <i class="fas fa-plus"></i> Nueva Cita
+        </button>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi-card green">
+        <div class="kpi-icon green"><i class="fas fa-user-check"></i></div>
+        <div class="kpi-num" id="kpi-atendidos">–</div>
+        <div class="kpi-label">Atendidos hoy</div>
+        <div class="kpi-delta" id="kpi-atendidos-delta">Cargando...</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-icon amber"><i class="fas fa-clock"></i></div>
+        <div class="kpi-num" id="kpi-pendientes">–</div>
+        <div class="kpi-label">Pendientes</div>
+        <div class="kpi-delta" style="color:var(--amber);" id="kpi-pendientes-delta">Cargando...</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-icon blue"><i class="fas fa-users"></i></div>
+        <div class="kpi-num" id="kpi-activos">–</div>
+        <div class="kpi-label">Pacientes activos</div>
+        <div class="kpi-delta" id="kpi-activos-delta">HD · DIPAC</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-icon red"><i class="fas fa-exclamation-circle"></i></div>
+        <div class="kpi-num" id="kpi-alertas">–</div>
+        <div class="kpi-label">Alertas adherencia</div>
+        <div class="kpi-delta" style="color:var(--red-soft);">↑ revisar</div>
+      </div>
+    </div>
+
+    <div class="content-grid">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Citas programadas</span>
+          <div class="tabs" style="margin:0;">
+            <div class="tab active" onclick="filterAgenda('all',this)">Todas</div>
+            <div class="tab" onclick="filterAgenda('HD',this)">HD</div>
+            <div class="tab" onclick="filterAgenda('DIPAC',this)">DIPAC</div>
+          </div>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Paciente</th><th>Tipo</th><th>Hora</th><th>Estado</th><th></th>
+          </tr></thead>
+          <tbody id="agenda-table-body">
+            <tr><td colspan="5" style="text-align:center;padding:30px;">
+              <div class="skeleton" style="height:16px;width:80%;margin:0 auto 8px;"></div>
+              <div class="skeleton" style="height:16px;width:60%;margin:0 auto;"></div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Próximas citas</span>
+          <span class="badge badge-green">Hoy</span>
+        </div>
+        <div class="agenda-list" id="agenda-list-hoy">
+          <div style="padding:20px;text-align:center;">
+            <div class="skeleton" style="height:52px;border-radius:8px;margin-bottom:8px;"></div>
+            <div class="skeleton" style="height:52px;border-radius:8px;margin-bottom:8px;"></div>
+            <div class="skeleton" style="height:52px;border-radius:8px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FICHA VIRTUAL ───────────────────────────── -->
+  <div class="page" id="page-ficha">
+    <div class="page-header">
+      <div>
+        <h1>📝 Ficha Psicológica Virtual</h1>
+        <p class="subtitle">Unidad Hemodiálisis & DIPAC – HNRPP</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-outline" id="btn-export-pdf" onclick="exportarFichaPDF(); addRipple(event)">
+          <i class="fas fa-file-pdf"></i> Exportar PDF
+        </button>
+        <button class="btn btn-primary" id="btn-save-ficha" onclick="guardarFicha(); addRipple(event)">
+          <i class="fas fa-save"></i> Guardar
+        </button>
+      </div>
+    </div>
+
+    <div class="info-box" id="ficha-info-box">
+      <strong>Paciente activo:</strong> <span id="ficha-paciente-nombre">Busca un paciente en la barra lateral para comenzar</span>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('ficha-tab','filiacion',this)">I. Filiación</div>
+      <div class="tab" onclick="switchTab('ficha-tab','familiar',this)">II. Familia</div>
+      <div class="tab" onclick="switchTab('ficha-tab','mental',this)">III. Examen Mental</div>
+      <div class="tab" onclick="switchTab('ficha-tab','monitoreo',this)">IV. Monitoreo</div>
+      <div class="tab" onclick="switchTab('ficha-tab','dx',this)">V. Dx e Intervención</div>
+    </div>
+
+    <div id="ficha-tab-filiacion" class="tab-content active card">
+      <p class="section-label">Datos del Encuentro Actual</p>
+      <div class="form-grid">
+        <div class="form-group"><label class="field-label">Fecha de Entrevista</label><input type="date" id="f-fecha" /></div>
+        <div class="form-group"><label class="field-label">Modalidad</label>
+          <select id="f-modalidad"><option>Hemodiálisis (HD)</option><option>DIPAC</option><option>ERCA</option></select></div>
+        <div class="form-group"><label class="field-label">Tiempo de Enfermedad</label><input type="text" id="f-te" placeholder="ej. 2 años 3 meses"/></div>
+        <div class="form-group"><label class="field-label">Turno</label><input type="text" id="f-turno" placeholder="ej. Turno Mañana"/></div>
+        <div class="form-group"><label class="field-label">Acceso Vascular</label>
+          <select id="f-acceso"><option>FAV</option><option>Catéter Venoso (CV)</option></select></div>
+        <div class="form-group"><label class="field-label">Tiempo en Diálisis</label><input type="text" id="f-tdialisis" placeholder="ej. 18 meses"/></div>
+        <div class="form-group full"><label class="field-label">Antecedentes Clínicos</label><textarea id="f-antecedentes" placeholder="HTA, DM2, ERC estadio V..."></textarea></div>
+        <div class="form-group full"><label class="field-label">Conciencia de la Enfermedad</label><textarea id="f-conciencia" placeholder="Nivel de comprensión y aceptación del diagnóstico..."></textarea></div>
+      </div>
+    </div>
+
+    <div id="ficha-tab-familiar" class="tab-content card">
+      <p class="section-label">Entorno Familiar y Social</p>
+      <div class="form-grid">
+        <div class="form-group"><label class="field-label">Dinámica Familiar</label>
+          <select id="f-dinamica"><option>Funcional</option><option>Disfuncional</option></select></div>
+        <div class="form-group"><label class="field-label">Nombre del Cuidador / Responsable</label><input type="text" id="f-cuidador" placeholder="Nombre completo"/></div>
+        <div class="form-group full"><label class="field-label">Anotación sobre Dinámica Familiar</label><textarea id="f-det-dinamica" placeholder="Describe la situación y redes de apoyo..."></textarea></div>
+        <div class="form-group"><label class="field-label">Instrucción</label><input type="text" id="f-instruccion"/></div>
+        <div class="form-group"><label class="field-label">Experiencia Laboral</label><input type="text" id="f-laboral"/></div>
+      </div>
+      <p class="section-label" style="margin-top:20px;">Escala de Adherencia (1–5)</p>
+      <div class="adh-row">
+        <div class="adh-item">
+          <div class="adh-label">Asistencia</div>
+          <div class="adh-val" id="adh-val-0">3</div>
+          <input type="range" min="1" max="5" value="3" id="adh-0" oninput="updateAdh(0,this.value)">
+        </div>
+        <div class="adh-item">
+          <div class="adh-label">Dieta</div>
+          <div class="adh-val" id="adh-val-1">3</div>
+          <input type="range" min="1" max="5" value="3" id="adh-1" oninput="updateAdh(1,this.value)">
+        </div>
+        <div class="adh-item">
+          <div class="adh-label">Farmacológica</div>
+          <div class="adh-val" id="adh-val-2">4</div>
+          <input type="range" min="1" max="5" value="4" id="adh-2" oninput="updateAdh(2,this.value)">
+        </div>
+        <div class="adh-item">
+          <div class="adh-label">Higiene</div>
+          <div class="adh-val" id="adh-val-3">4</div>
+          <input type="range" min="1" max="5" value="4" id="adh-3" oninput="updateAdh(3,this.value)">
+        </div>
+      </div>
+    </div>
+
+    <div id="ficha-tab-mental" class="tab-content card">
+      <p class="section-label">Examen del Estado Mental</p>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <input type="checkbox" id="lotep" onchange="applyLOTEP(this.checked)" style="width:16px;height:16px;cursor:pointer;">
+        <label for="lotep" style="font-size:13px;cursor:pointer;">Aplicar plantilla LOTEP (valores basales normales)</label>
+      </div>
+      <div class="mental-grid">
+        <div class="mental-item"><div class="mental-item-label">1. Observaciones Generales</div><textarea id="obs-gen" placeholder="Aliño, presentación general..." style="background:transparent;border:none;width:100%;outline:none;font-family:var(--font-b);font-size:13px;resize:none;height:80px;"></textarea></div>
+        <div class="mental-item"><div class="mental-item-label">2. Estado Afectivo y Conductual</div><textarea id="obs-afe" placeholder="Estado de ánimo, afecto..." style="background:transparent;border:none;width:100%;outline:none;font-family:var(--font-b);font-size:13px;resize:none;height:80px;"></textarea></div>
+        <div class="mental-item"><div class="mental-item-label">3. Aspectos Cognoscitivos</div><textarea id="obs-cog" placeholder="Orientación, memoria, atención..." style="background:transparent;border:none;width:100%;outline:none;font-family:var(--font-b);font-size:13px;resize:none;height:80px;"></textarea></div>
+        <div class="mental-item"><div class="mental-item-label">4. Actividad Voluntaria</div><textarea id="obs-vol" placeholder="Volición, conductas motivadas..." style="background:transparent;border:none;width:100%;outline:none;font-family:var(--font-b);font-size:13px;resize:none;height:80px;"></textarea></div>
+      </div>
+    </div>
+
+    <div id="ficha-tab-monitoreo" class="tab-content card">
+      <p class="section-label">Monitoreo Bio-Conductual S1–S9</p>
+      <div id="monitor-chart-container" style="height:220px;position:relative;margin-bottom:16px;">
+        <canvas id="monitor-chart"></canvas>
+      </div>
+      <table>
+        <thead><tr><th>Área</th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th><th>S6</th><th>S7</th><th>S8</th><th>S9</th></tr></thead>
+        <tbody id="monitoreo-tbody">
+          <tr><td style="font-weight:600;">A – Afectivo</td><td>5</td><td>4</td><td>6</td><td>5</td><td>7</td><td>6</td><td>7</td><td>8</td><td>8</td></tr>
+          <tr><td style="font-weight:600;">X – Ansioso</td><td>7</td><td>6</td><td>5</td><td>5</td><td>4</td><td>4</td><td>3</td><td>3</td><td>2</td></tr>
+          <tr><td style="font-weight:600;">D – Adherencia</td><td>3</td><td>4</td><td>4</td><td>5</td><td>5</td><td>6</td><td>6</td><td>7</td><td>7</td></tr>
+          <tr><td style="font-weight:600;">S – Sueño</td><td>4</td><td>4</td><td>5</td><td>5</td><td>6</td><td>6</td><td>7</td><td>7</td><td>8</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="ficha-tab-dx" class="tab-content card">
+      <p class="section-label">Diagnóstico e Intervención Psicológica</p>
+      <div class="form-grid">
+        <div class="form-group full"><label class="field-label">VI. Diagnóstico Psicológico</label>
+          <textarea id="f-diagnostico" placeholder="Formulación diagnóstica desde el modelo intraconductual..."></textarea></div>
+        <div class="form-group"><label class="field-label">Tipo de Intervención</label>
+          <select id="f-tipo-interv"><option>Individual</option><option>Grupal</option><option>Familiar</option></select></div>
+        <div class="form-group"><label class="field-label">Tests Aplicados</label>
+          <input type="text" id="f-tests" placeholder="HADS, EAT, FACES, CAEPO..."/></div>
+        <div class="form-group full"><label class="field-label">Detalles de la Estrategia de Intervención</label>
+          <textarea id="f-estrategia" style="min-height:100px;" placeholder="Técnicas empleadas, objetivos, actividades..."></textarea></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+        <button class="btn btn-outline" onclick="exportarFichaPDF(); addRipple(event)">
+          <i class="fas fa-file-pdf"></i> Generar PDF
+        </button>
+        <button class="btn btn-primary" onclick="guardarFicha(); addRipple(event)">
+          <i class="fas fa-save"></i> Finalizar Registro
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SALAS ───────────────────────────────────── -->
+  <div class="page" id="page-salas">
+    <div class="page-header">
+      <div>
+        <h1>📋 Mapa Digital de Salas</h1>
+        <p class="subtitle">Distribución de pacientes por máquina y turno</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-outline" onclick="loadSala(); addRipple(event)">
+          <i class="fas fa-sync-alt"></i> Actualizar
+        </button>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:0;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px;">
+        <div class="form-group"><label class="field-label">Día</label>
+          <select id="sala-dia" onchange="loadSala()">
+            <option>Lunes</option><option>Martes</option><option>Miércoles</option>
+            <option>Jueves</option><option>Viernes</option><option>Sábado</option>
+          </select></div>
+        <div class="form-group"><label class="field-label">Turno</label>
+          <select id="sala-turno" onchange="loadSala()">
+            <option>07:00–12:00</option><option>12:00–16:00</option>
+            <option>16:00–21:00</option><option>21:00–01:00</option>
+          </select></div>
+        <div class="form-group"><label class="field-label">Sala</label>
+          <select id="sala-num" onchange="loadSala()">
+            <option>Sala 1</option><option>Sala 2</option>
+          </select></div>
+      </div>
+      <p class="section-label" id="sala-label">Sala 1 – Turno Mañana</p>
+      <div class="sala-grid" id="sala-grid">
+        <!-- generado dinámicamente -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ── HISTORIA CLÍNICA ───────────────────────── -->
+  <div class="page" id="page-historia">
+    <div class="page-header">
+      <div><h1>📂 Expediente Clínico Integral</h1><p class="subtitle">Historial completo del paciente</p></div>
+      <div class="header-actions">
+        <button class="btn btn-outline" onclick="window.print(); addRipple(event)"><i class="fas fa-print"></i> Imprimir</button>
+        <button class="btn btn-primary" id="btn-pdf-historia" onclick="descargarPDFHistoria(); addRipple(event)">
+          <i class="fas fa-file-pdf"></i> Descargar PDF
+        </button>
+      </div>
+    </div>
+    <div id="historia-content">
+      <div class="empty-state">
+        <i class="fas fa-folder-open"></i>
+        <h3>Sin paciente seleccionado</h3>
+        <p>Busca un paciente en la barra lateral para ver su expediente.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PRUEBAS PSICOMÉTRICAS ──────────────────── -->
+  <div class="page" id="page-psicometria">
+    <div class="page-header">
+      <div><h1>🧩 Pruebas Psicométricas</h1><p class="subtitle">Evaluación y puntuación automatizada</p></div>
+    </div>
+    <div class="content-grid">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Seleccionar Prueba</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="agenda-item" onclick="loadPrueba('hads'); addRipple(event)">
+            <div class="agenda-dot"></div><div><div class="agenda-name">HADS</div><div class="agenda-type">Ansiedad y Depresión</div></div></div>
+          <div class="agenda-item" onclick="loadPrueba('eat26'); addRipple(event)">
+            <div class="agenda-dot orange"></div><div><div class="agenda-name">EAT-26</div><div class="agenda-type">Actitudes Alimentarias</div></div></div>
+          <div class="agenda-item" onclick="loadPrueba('faces'); addRipple(event)">
+            <div class="agenda-dot" style="background:#1565C0;"></div><div><div class="agenda-name">FACES III</div><div class="agenda-type">Funcionamiento Familiar</div></div></div>
+          <div class="agenda-item" onclick="loadPrueba('caepo'); addRipple(event)">
+            <div class="agenda-dot" style="background:#7B1FA2;"></div><div><div class="agenda-name">CAEPO</div><div class="agenda-type">Calidad de Vida</div></div></div>
+          <div class="agenda-item" onclick="loadPrueba('panss'); addRipple(event)">
+            <div class="agenda-dot red"></div><div><div class="agenda-name">PANSS</div><div class="agenda-type">Síntomas Psicóticos</div></div></div>
+          <div class="agenda-item" onclick="loadPrueba('bacs'); addRipple(event)">
+            <div class="agenda-dot" style="background:#00838F;"></div><div><div class="agenda-name">BACS</div><div class="agenda-type">Cognición en Esquizofrenia</div></div></div>
+        </div>
+      </div>
+      <div class="card" id="prueba-result-card">
+        <div class="empty-state">
+          <i class="fas fa-flask"></i>
+          <h3>Selecciona una prueba</h3>
+          <p>Los resultados aparecerán aquí.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── REGISTRO DE ATENCIÓN ─────────────────── -->
+  <div class="page" id="page-registro">
+    <div class="page-header">
+      <div><h1>📊 Registro de Atención</h1><p class="subtitle">Documentación de atenciones diarias</p></div>
+      <div class="header-actions">
+        <button class="btn btn-primary" onclick="openModal('modal-atencion'); addRipple(event)">
+          <i class="fas fa-plus"></i> Nueva Atención
+        </button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Atenciones del mes</span>
+        <span class="badge badge-green" id="registro-mes">Junio 2026</span>
+      </div>
+      <table>
+        <thead><tr><th>Paciente</th><th>DNI</th><th>Tipo</th><th>Fecha</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="registro-table-body">
+          <tr><td colspan="6" class="empty-state" style="padding:40px;">
+            <i class="fas fa-clipboard-list" style="font-size:36px;"></i>
+            <p>Cargando registros...</p>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── EVOLUCIÓN CLÍNICA ─────────────────────── -->
+  <div class="page" id="page-evolucion">
+    <div class="page-header">
+      <div><h1>📈 Evolución Clínica</h1><p class="subtitle">Seguimiento longitudinal del paciente</p></div>
+    </div>
+    <div class="info-box" id="evolucion-info">
+      <strong>Paciente:</strong> <span id="evolucion-paciente">Selecciona un paciente para ver la evolución</span>
+    </div>
+    <div class="card">
+      <div id="evolucion-chart-wrap" style="height:300px;position:relative;">
+        <canvas id="evolucion-chart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Notas de Evolución</span>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-evolucion'); addRipple(event)" style="padding:6px 14px;font-size:12px;">
+          <i class="fas fa-plus"></i> Nueva Nota
+        </button>
+      </div>
+      <div id="evolucion-notas">
+        <div class="empty-state"><i class="fas fa-notes-medical"></i><p>Sin notas. Selecciona un paciente.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADMINISTRACIÓN ────────────────────────── -->
+  <div class="page" id="page-admin">
+    <div class="page-header">
+      <div><h1>📊 Administración</h1><p class="subtitle">Estadísticas y reportes del servicio</p></div>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi-card green"><div class="kpi-icon green"><i class="fas fa-calendar-check"></i></div><div class="kpi-num" id="admin-atenciones">–</div><div class="kpi-label">Atenciones – Mes</div></div>
+      <div class="kpi-card blue"><div class="kpi-icon blue"><i class="fas fa-users"></i></div><div class="kpi-num" id="admin-pacientes">–</div><div class="kpi-label">Pacientes activos</div></div>
+      <div class="kpi-card amber"><div class="kpi-icon amber"><i class="fas fa-procedures"></i></div><div class="kpi-num" id="admin-hd">–</div><div class="kpi-label">Hemodiálisis</div></div>
+      <div class="kpi-card red"><div class="kpi-icon red"><i class="fas fa-heartbeat"></i></div><div class="kpi-num" id="admin-dipac">–</div><div class="kpi-label">DIPAC / ERCA</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Distribución de Atenciones por Tipo</span></div>
+      <div style="height:260px;"><canvas id="admin-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ── INFORME MENSUAL ───────────────────────── -->
+  <div class="page" id="page-informe">
+    <div class="page-header">
+      <div><h1>📅 Informe Mensual</h1><p class="subtitle">Reporte para la jefatura del servicio</p></div>
+      <button class="btn btn-primary" onclick="generarInforme(); addRipple(event)">
+        <i class="fas fa-file-word"></i> Generar Informe
+      </button>
+    </div>
+    <div class="card">
+      <div class="form-grid" style="max-width:400px;">
+        <div class="form-group">
+          <label class="field-label">Mes</label>
+          <select id="informe-mes">
+            <option value="1">Enero</option><option value="2">Febrero</option>
+            <option value="3">Marzo</option><option value="4">Abril</option>
+            <option value="5">Mayo</option><option value="6" selected>Junio</option>
+            <option value="7">Julio</option><option value="8">Agosto</option>
+            <option value="9">Septiembre</option><option value="10">Octubre</option>
+            <option value="11">Noviembre</option><option value="12">Diciembre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Año</label>
+          <input type="number" id="informe-anio" value="2026" min="2020"/>
+        </div>
+      </div>
+      <div id="informe-preview" style="margin-top:24px;">
+        <div class="empty-state">
+          <i class="fas fa-file-alt"></i>
+          <h3>Selecciona mes y año</h3>
+          <p>Haz clic en "Generar Informe" para producir el reporte consolidado.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MANTENIMIENTO ─────────────────────────── -->
+  <div class="page" id="page-mantenimiento">
+    <div class="page-header">
+      <div><h1>⚙️ Mantenimiento del Sistema</h1><p class="subtitle">Gestión y limpieza de la base de datos</p></div>
+    </div>
+    <div class="card">
+      <p class="section-label">Acciones de Sistema</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn btn-outline" onclick="accionSistema('backup'); addRipple(event)">
+          <i class="fas fa-database"></i> Respaldar BD
+        </button>
+        <button class="btn btn-danger" onclick="accionSistema('vacuum'); addRipple(event)">
+          <i class="fas fa-trash"></i> Vaciar Registros
+        </button>
+        <button class="btn btn-outline" onclick="accionSistema('schema'); addRipple(event)">
+          <i class="fas fa-wrench"></i> Actualizar Esquema
+        </button>
+        <button class="btn btn-outline" onclick="accionSistema('export'); addRipple(event)">
+          <i class="fas fa-file-export"></i> Exportar CSV
+        </button>
+      </div>
+      <div style="margin-top:24px;">
+        <p class="section-label">Estado del Servidor</p>
+        <div id="system-status" style="font-size:13px;color:var(--muted);line-height:2;">
+          Comprobando conexión...
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════════════════ MODAL: NUEVA CITA ═══════════════════════ -->
+<div class="modal-bg" id="modal-cita">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">📅 Programar Nueva Cita</span>
+      <button class="modal-close" onclick="closeModal('modal-cita')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label class="field-label">DNI del Paciente</label><input type="text" id="cita-dni" placeholder="8 dígitos" maxlength="8"/></div>
+      <div class="form-group"><label class="field-label">Fecha de Cita</label><input type="date" id="cita-fecha"/></div>
+      <div class="form-group full"><label class="field-label">Tipo de Atención</label>
+        <select id="cita-tipo">
+          <option>Atención Psicológica</option>
+          <option>Intervención Individual</option>
+          <option>Intervención Familiar</option>
+          <option>Evaluación Diagnóstica</option>
+        </select>
+      </div>
+      <div class="form-group full"><label class="field-label">Observaciones Iniciales</label>
+        <textarea id="cita-obs" placeholder="Motivo de referencia o notas previas..."></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal('modal-cita')">Cancelar</button>
+      <button class="btn btn-primary" onclick="agendarCita(); addRipple(event)">
+        <i class="fas fa-calendar-plus"></i> Agendar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ MODAL: ASIGNAR MÁQUINA ══════════════════ -->
+<div class="modal-bg" id="modal-asignar">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🛌 Asignar Paciente a Máquina</span>
+      <button class="modal-close" onclick="closeModal('modal-asignar')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label class="field-label">Número de Máquina</label>
+        <input type="number" id="asignar-maquina" placeholder="1–8" min="1" max="8"/></div>
+      <div class="form-group"><label class="field-label">DNI del Paciente</label>
+        <input type="text" id="asignar-dni" placeholder="8 dígitos"/></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal('modal-asignar')">Cancelar</button>
+      <button class="btn btn-primary" onclick="asignarMaquina(); addRipple(event)">
+        <i class="fas fa-check"></i> Guardar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ MODAL: NUEVA NOTA EVOLUCIÓN ════════════ -->
+<div class="modal-bg" id="modal-evolucion">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">📝 Nueva Nota de Evolución</span>
+      <button class="modal-close" onclick="closeModal('modal-evolucion')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label class="field-label">Fecha</label><input type="date" id="evol-fecha"/></div>
+      <div class="form-group"><label class="field-label">Tipo</label>
+        <select id="evol-tipo">
+          <option>Atención Psicológica</option><option>Intervención Individual</option>
+          <option>Intervención Familiar</option><option>Evaluación Diagnóstica</option>
+        </select>
+      </div>
+      <div class="form-group full"><label class="field-label">Nota Clínica</label>
+        <textarea id="evol-nota" placeholder="Evolución clínica, observaciones..." style="min-height:120px;"></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal('modal-evolucion')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarNota(); addRipple(event)">
+        <i class="fas fa-save"></i> Guardar Nota
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ MODAL: NUEVA ATENCIÓN ══════════════════ -->
+<div class="modal-bg" id="modal-atencion">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">📋 Registrar Atención</span>
+      <button class="modal-close" onclick="closeModal('modal-atencion')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label class="field-label">DNI del Paciente</label><input type="text" id="aten-dni" placeholder="8 dígitos"/></div>
+      <div class="form-group"><label class="field-label">Fecha</label><input type="date" id="aten-fecha"/></div>
+      <div class="form-group full"><label class="field-label">Tipo de Atención</label>
+        <select id="aten-tipo">
+          <option>Atención Psicológica</option><option>Intervención Individual</option>
+          <option>Intervención Familiar</option><option>Evaluación Diagnóstica</option>
+        </select>
+      </div>
+      <div class="form-group full"><label class="field-label">Observaciones</label>
+        <textarea id="aten-obs" placeholder="Notas de la atención..."></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal('modal-atencion')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarAtencion(); addRipple(event)">
+        <i class="fas fa-check"></i> Guardar Atención
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"><i class="fas fa-check-circle" id="toast-icon"></i><span id="toast-msg">Acción completada</span></div>
+
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  SUPABASE INIT
+// ════════════════════════════════════════════════════════════
+let supabase_client = null;
+let currentUser = null;
+let currentPatient = null;  // paciente activo en la app
+
+// Si el SDK está disponible inicializamos; si no, modo demo
+try {
+  supabase_client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  console.log('✅ Supabase client inicializado');
+} catch(e) {
+  console.warn('⚠️ Supabase SDK no disponible, modo demo activo');
+}
+
+// ════════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════════
+const todayISO = () => new Date().toISOString().split('T')[0];
+
+// Llama al backend FastAPI (o Supabase directamente)
+async function apiFetch(endpoint, method='GET', body=null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+  };
+  if (body) opts.body = JSON.stringify(body);
+
+  // Si hay Supabase auth, agrega token
+  if (supabase_client) {
+    const { data: { session } } = await supabase_client.auth.getSession();
+    if (session) opts.headers['Authorization'] = `Bearer ${session.access_token}`;
+  }
+
+  try {
+    const res = await fetch(API_BASE + endpoint, opts);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch(e) {
+    console.warn('API no disponible, usando datos demo:', e.message);
+    return null; // caller decide qué hacer con null → datos demo
+  }
+}
+
+// Datos demo para cuando el backend no está disponible
+const DEMO = {
+  kpi: { atendidos:12, pendientes:5, activos:34, alertas:3 },
+  agenda: [
+    { id:1, paciente:'Ríos Castillo, M.', dni:'40123456', tipo:'Atención Psicológica', hora:'07:00', estado:'Atendido',   servicio:'HD' },
+    { id:2, paciente:'Vargas Lima, A.',   dni:'44921837', tipo:'Intervención Familiar', hora:'09:30', estado:'Pendiente',  servicio:'DIPAC' },
+    { id:3, paciente:'Ccoya Huamán, J.',  dni:'47234512', tipo:'Evaluación Diagnóstica',hora:'10:00', estado:'Pendiente',  servicio:'HD' },
+    { id:4, paciente:'Palomino Quispe, L.', dni:'44453298', tipo:'Intervención Individual',hora:'14:00', estado:'Programado',servicio:'HD' },
+    { id:5, paciente:'Torres Mendoza, G.', dni:'44001122', tipo:'Atención Psicológica', hora:'15:30', estado:'Programado',servicio:'DIPAC' },
+  ],
+  sala: [
+    {maquina:1, paciente:'Ríos Castillo, M.',    dni:'40123456'},
+    {maquina:2, paciente:'Ccoya Huamán, J.',     dni:'47234512'},
+    {maquina:3, paciente:null},
+    {maquina:4, paciente:'Torres Mendoza, G.',   dni:'44001122'},
+    {maquina:5, paciente:null},
+    {maquina:6, paciente:'Palomino Quispe, L.',  dni:'44453298'},
+    {maquina:7, paciente:'Quispe Huanca, R.',    dni:'43219876'},
+    {maquina:8, paciente:null},
+  ],
+  pacientes: [
+    { dni:'40123456', nombres:'María', apellidos:'Ríos Castillo', edad:62, sexo:'F', servicio:'HD' },
+    { dni:'44921837', nombres:'Ana', apellidos:'Vargas Lima', edad:58, sexo:'F', servicio:'DIPAC' },
+    { dni:'47234512', nombres:'Juan', apellidos:'Ccoya Huamán', edad:67, sexo:'M', servicio:'HD' },
+    { dni:'44453298', nombres:'Luis', apellidos:'Palomino Quispe', edad:71, sexo:'M', servicio:'HD' },
+    { dni:'44001122', nombres:'Gonzalo', apellidos:'Torres Mendoza', edad:55, sexo:'M', servicio:'DIPAC' },
+  ]
+};
+
+// ════════════════════════════════════════════════════════════
+//  ANIMACIONES
+// ════════════════════════════════════════════════════════════
+function addRipple(e) {
+  const btn = e.currentTarget || e.target.closest('.btn') || e.target;
+  if (!btn) return;
+  const rect = btn.getBoundingClientRect();
+  const r = document.createElement('span');
+  r.className = 'ripple';
+  const size = Math.max(rect.width, rect.height);
+  r.style.cssText = `
+    width:${size}px; height:${size}px;
+    left:${e.clientX - rect.left - size/2}px;
+    top:${e.clientY - rect.top - size/2}px;
+  `;
+  btn.appendChild(r);
+  r.addEventListener('animationend', () => r.remove());
+}
+
+// Añadir ripple a todos los .btn al hacer click
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.btn');
+  if (btn) addRipple({currentTarget: btn, clientX: e.clientX, clientY: e.clientY});
+});
+
+function countUp(el, target, duration=600) {
+  const start = Date.now();
+  const tick = () => {
+    const p = Math.min((Date.now()-start)/duration, 1);
+    el.textContent = Math.round(p * target);
+    el.classList.add('counting');
+    if (p < 1) requestAnimationFrame(tick);
+    else { el.textContent = target; setTimeout(()=>el.classList.remove('counting'),200); }
+  };
+  requestAnimationFrame(tick);
+}
+
+// ════════════════════════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════════════════════════
+// Credenciales demo fallback (solo si Supabase no está conectado)
+const DEMO_USER = 'psiconefro@essalud.gob.pe';
+const DEMO_PASS = 'psiconefro_2026';
+
+async function tryLogin() {
+  const email = document.getElementById('login-user').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const btn   = document.getElementById('btn-login-submit');
+  const err   = document.getElementById('login-error');
+
+  if (!email || !pass) { showError('Completa todos los campos.'); return; }
+
+  btn.classList.add('loading');
+  btn.textContent = 'Verificando...';
+
+  // 1. Intentar con Supabase Auth real
+  if (supabase_client && SUPABASE_URL !== 'https://TU_PROYECTO.supabase.co') {
+    const { data, error } = await supabase_client.auth.signInWithPassword({ email, password: pass });
+    if (error) {
+      btn.classList.remove('loading');
+      btn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right:8px;"></i>Ingresar al Sistema';
+      showError('Credenciales incorrectas. ' + error.message);
+      return;
+    }
+    currentUser = data.user;
+    loginSuccess(email);
+    return;
+  }
+
+  // 2. Fallback demo
+  await new Promise(r => setTimeout(r, 800)); // simular latencia
+  if (email === DEMO_USER && pass === DEMO_PASS) {
+    currentUser = { email, id: 'demo-user' };
+    loginSuccess(email);
+  } else {
+    btn.classList.remove('loading');
+    btn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right:8px;"></i>Ingresar al Sistema';
+    showError('Credenciales incorrectas. Intente nuevamente.');
+  }
+}
+
+function loginSuccess(email) {
+  document.getElementById('login-overlay').classList.add('hidden');
+  // actualizar chip usuario
+  const initials = email.split('@')[0].slice(0,2).toUpperCase();
+  document.getElementById('user-avatar').textContent = initials;
+  document.getElementById('user-name').textContent   = email.split('@')[0];
+  initApp();
+}
+
+function showError(msg) {
+  const err = document.getElementById('login-error');
+  err.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${msg}`;
+  err.style.display = 'block';
+  setTimeout(() => err.style.display='none', 4000);
+}
+
+async function logout() {
+  if (supabase_client) await supabase_client.auth.signOut();
+  currentUser = null; currentPatient = null;
+  document.getElementById('login-overlay').classList.remove('hidden');
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('btn-login-submit').innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right:8px;"></i>Ingresar al Sistema';
+}
+
+document.addEventListener('keydown', e => { if(e.key==='Enter') tryLogin(); });
+
+// ════════════════════════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════════════════════════
+function navigate(pageId, el) {
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const page = document.getElementById('page-'+pageId);
+  if (page) page.classList.add('active');
+
+  // cargar datos específicos de cada página
+  if (pageId === 'agenda')      loadAgenda();
+  if (pageId === 'salas')       loadSala();
+  if (pageId === 'ficha')       setTimeout(initMonitorChart, 120);
+  if (pageId === 'admin')       loadAdmin();
+  if (pageId === 'mantenimiento') checkSystemStatus();
+  if (pageId === 'registro')    loadRegistros();
+}
+
+// ════════════════════════════════════════════════════════════
+//  TABS
+// ════════════════════════════════════════════════════════════
+function switchTab(group, tabId, el) {
+  const prefix = group + '-';
+  document.querySelectorAll('[id^="'+prefix+'"]').forEach(t=>t.classList.remove('active'));
+  document.getElementById(prefix + tabId).classList.add('active');
+  el.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  if (tabId==='monitoreo') setTimeout(initMonitorChart, 100);
+}
+
+// ════════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg, type='success') {
+  const t   = document.getElementById('toast');
+  const ico = document.getElementById('toast-icon');
+  document.getElementById('toast-msg').textContent = msg;
+  t.className = type === 'error' ? 'error' : '';
+  ico.className = type === 'error' ? 'fas fa-times-circle' : 'fas fa-check-circle';
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ════════════════════════════════════════════════════════════
+//  MODAL
+// ════════════════════════════════════════════════════════════
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(m => m.addEventListener('click', function(e){
+  if (e.target === this) this.classList.remove('open');
+}));
+
+// ════════════════════════════════════════════════════════════
+//  INIT APP
+// ════════════════════════════════════════════════════════════
+function initApp() {
+  const now   = new Date();
+  const opts  = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
+  const fecha = now.toLocaleDateString('es-PE', opts);
+  document.getElementById('fecha-hoy').textContent = fecha.charAt(0).toUpperCase() + fecha.slice(1);
+  // set fecha defaults en inputs
+  document.querySelectorAll('input[type=date]').forEach(i => { if(!i.value) i.value = todayISO(); });
+  loadAgenda();
+}
+
+// ════════════════════════════════════════════════════════════
+//  AGENDA
+// ════════════════════════════════════════════════════════════
+let agendaFilter = 'all';
+
+async function loadAgenda() {
+  const data = await apiFetch(`/agenda?fecha=${todayISO()}`) || DEMO.agenda;
+  const kpi  = await apiFetch(`/kpi?fecha=${todayISO()}`)    || DEMO.kpi;
+
+  // KPIs con conteo animado
+  const kpiMap = {
+    'kpi-atendidos': kpi.atendidos,
+    'kpi-pendientes': kpi.pendientes,
+    'kpi-activos': kpi.activos,
+    'kpi-alertas': kpi.alertas,
+  };
+  Object.entries(kpiMap).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) countUp(el, val);
+  });
+  const atEl = document.getElementById('kpi-atendidos-delta');
+  if (atEl) atEl.textContent = `↑ +${kpi.atendidos} vs ayer`;
+
+  renderAgendaTable(data);
+  renderAgendaList(data);
+}
+
+function renderAgendaTable(items) {
+  const filt = agendaFilter === 'all' ? items : items.filter(i => i.servicio === agendaFilter);
+  const tbody = document.getElementById('agenda-table-body');
+  if (!filt.length) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><i class="fas fa-calendar-times"></i><p>Sin citas para este filtro</p></div></td></tr>`;
+    return;
+  }
+  const badges = { 'Atendido':'badge-green', 'Pendiente':'badge-amber', 'Programado':'badge-blue' };
+  tbody.innerHTML = filt.map(c => {
+    const initials = c.paciente.split(',')[0].split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    return `<tr>
+      <td><div class="patient-cell"><div class="avatar">${initials}</div>
+        <div><div style="font-size:13px;font-weight:600;">${c.paciente}</div>
+        <div style="font-size:11px;color:var(--muted);">${c.servicio} · DNI ${c.dni}</div></div></div></td>
+      <td>${c.tipo}</td>
+      <td style="font-weight:600;color:var(--teal-500);">${c.hora}</td>
+      <td><span class="badge ${badges[c.estado]||'badge-blue'}">${c.estado}</span></td>
+      <td>
+        <button class="btn btn-outline" style="padding:5px 10px;font-size:11px;"
+          onclick="verFichaPaciente('${c.dni}','${c.paciente}')">Ver</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAgendaList(items) {
+  const colores = { 'Atendido':'', 'Pendiente':'orange', 'Programado':'' };
+  const list = document.getElementById('agenda-list-hoy');
+  const filt = agendaFilter === 'all' ? items : items.filter(i => i.servicio === agendaFilter);
+  list.innerHTML = filt.map(c => `
+    <div class="agenda-item" onclick="verFichaPaciente('${c.dni}','${c.paciente}')">
+      <div class="agenda-time">${c.hora}</div>
+      <div class="agenda-dot ${colores[c.estado]||''}"></div>
+      <div>
+        <div class="agenda-name">${c.paciente}</div>
+        <div class="agenda-type">${c.tipo} · ${c.servicio}</div>
+      </div>
+    </div>
+  `).join('') || '<p style="padding:20px;color:var(--muted);font-size:13px;text-align:center;">Sin citas</p>';
+}
+
+function filterAgenda(type, el) {
+  agendaFilter = type;
+  el.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  loadAgenda();
+}
+
+// ════════════════════════════════════════════════════════════
+//  CITAS
+// ════════════════════════════════════════════════════════════
+async function agendarCita() {
+  const dni   = document.getElementById('cita-dni').value.trim();
+  const fecha = document.getElementById('cita-fecha').value;
+  const tipo  = document.getElementById('cita-tipo').value;
+  const obs   = document.getElementById('cita-obs').value;
+
+  if (!dni || !fecha) { showToast('DNI y fecha son obligatorios', 'error'); return; }
+  if (dni.length !== 8 || isNaN(dni)) { showToast('DNI debe tener 8 dígitos', 'error'); return; }
+
+  const btn = document.querySelector('#modal-cita .btn-primary');
+  btn.classList.add('loading');
+
+  const result = await apiFetch('/agenda', 'POST', { dni, fecha, tipo_cita: tipo, observaciones: obs });
+
+  btn.classList.remove('loading');
+  closeModal('modal-cita');
+
+  if (result !== null) {
+    showToast('Cita agendada exitosamente');
+  } else {
+    showToast('Cita guardada (modo demo)', 'success');
+  }
+  // limpiar
+  ['cita-dni','cita-obs'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('cita-fecha').value = todayISO();
+  loadAgenda();
+}
+
+// ════════════════════════════════════════════════════════════
+//  SALA DE MÁQUINAS
+// ════════════════════════════════════════════════════════════
+async function loadSala() {
+  const dia    = document.getElementById('sala-dia').value;
+  const turno  = document.getElementById('sala-turno').value;
+  const sala   = document.getElementById('sala-num').value;
+  document.getElementById('sala-label').textContent = `${sala} – Turno ${turno} – ${dia}`;
+
+  const data = await apiFetch(`/sala?sala=${encodeURIComponent(sala)}&turno=${encodeURIComponent(turno)}&dia=${encodeURIComponent(dia)}`)
+               || DEMO.sala;
+  renderSala(data);
+}
+
+function renderSala(maquinas) {
+  const grid = document.getElementById('sala-grid');
+  grid.innerHTML = '';
+  for (let i=1; i<=8; i++) {
+    const m    = maquinas.find(x => x.maquina === i) || { maquina:i, paciente:null };
+    const card = document.createElement('div');
+    card.className = 'cama-card' + (m.paciente ? ' occupied' : '');
+
+    if (m.paciente) {
+      card.innerHTML = `
+        <div class="cama-num">M-0${i}</div>
+        <i class="fas fa-procedures" style="font-size:18px;color:var(--teal-400);"></i>
+        <div class="cama-patient">${m.paciente.split(' ').slice(0,2).join('<br>')}</div>
+      `;
+      card.onclick = () => {
+        verFichaPaciente(m.dni, m.paciente);
+        showToast(`Máquina M-0${i} · ${m.paciente} seleccionada`);
+      };
+    } else {
+      card.innerHTML = `
+        <div class="cama-num">M-0${i}</div>
+        <i class="fas fa-plus-circle" style="font-size:22px;color:var(--border);"></i>
+        <div class="cama-empty">Libre</div>
+      `;
+      card.onclick = () => {
+        document.getElementById('asignar-maquina').value = i;
+        openModal('modal-asignar');
+      };
+    }
+    grid.appendChild(card);
+  }
+}
+
+async function asignarMaquina() {
+  const maquina = document.getElementById('asignar-maquina').value;
+  const dni     = document.getElementById('asignar-dni').value.trim();
+  const dia     = document.getElementById('sala-dia').value;
+  const turno   = document.getElementById('sala-turno').value;
+  const sala    = document.getElementById('sala-num').value;
+
+  if (!maquina || !dni) { showToast('Completa todos los campos', 'error'); return; }
+
+  const btn = document.querySelector('#modal-asignar .btn-primary');
+  btn.classList.add('loading');
+
+  await apiFetch('/sala/asignar', 'POST', { maquina, dni, dia, turno, sala });
+  btn.classList.remove('loading');
+  closeModal('modal-asignar');
+  showToast(`Paciente asignado a M-0${maquina}`);
+  loadSala();
+}
+
+// ════════════════════════════════════════════════════════════
+//  BÚSQUEDA GLOBAL
+// ════════════════════════════════════════════════════════════
+let searchTimer;
+async function globalSearch(val) {
+  clearTimeout(searchTimer);
+  const res = document.getElementById('search-results');
+  if (!val || val.length < 2) { res.classList.remove('show'); return; }
+
+  searchTimer = setTimeout(async () => {
+    const data = await apiFetch(`/pacientes/buscar?q=${encodeURIComponent(val)}`)
+                 || DEMO.pacientes.filter(p =>
+                      p.dni.includes(val) ||
+                      `${p.nombres} ${p.apellidos}`.toLowerCase().includes(val.toLowerCase())
+                    );
+
+    if (!data.length) {
+      res.innerHTML = `<div class="search-result-item" style="color:var(--muted);">Sin resultados para "${val}"</div>`;
+    } else {
+      res.innerHTML = data.slice(0,5).map(p => `
+        <div class="search-result-item" onclick="seleccionarPaciente('${p.dni}','${p.nombres} ${p.apellidos}')">
+          ${p.apellidos}, ${p.nombres}
+          <span class="dni-tag">${p.dni} · ${p.servicio||''}</span>
+        </div>
+      `).join('');
+    }
+    res.classList.add('show');
+  }, 300);
+}
+
+function seleccionarPaciente(dni, nombre) {
+  currentPatient = { dni, nombre };
+  document.getElementById('global-search').value = nombre;
+  document.getElementById('search-results').classList.remove('show');
+
+  // actualizar info boxes
+  document.getElementById('ficha-paciente-nombre').textContent = `${nombre} · DNI: ${dni}`;
+
+  showToast(`Paciente: ${nombre}`);
+  // cargar ficha si existe
+  loadFichaPaciente(dni);
+}
+
+function verFichaPaciente(dni, nombre) {
+  seleccionarPaciente(dni, nombre);
+  // navegar a ficha virtual
+  const fichaNav = document.querySelector('.nav-item[onclick*="ficha"]');
+  if (fichaNav) { navigate('ficha', fichaNav); fichaNav.classList.add('active'); }
+}
+
+// ════════════════════════════════════════════════════════════
+//  FICHA VIRTUAL
+// ════════════════════════════════════════════════════════════
+async function loadFichaPaciente(dni) {
+  const data = await apiFetch(`/fichas/${dni}`);
+  if (!data) return;  // sin ficha previa, formulario vacío OK
+  // rellenar campos si existe ficha
+  const map = {
+    'f-fecha': data.fecha_entrevista, 'f-te': data.filiacion?.te,
+    'f-turno': data.filiacion?.turno, 'f-tdialisis': data.filiacion?.t_dialisis,
+    'f-antecedentes': data.antecedentes, 'f-conciencia': data.conciencia,
+    'f-cuidador': data.nombre_cuidador, 'f-det-dinamica': data.det_dinamica,
+    'f-diagnostico': data.diagnostico, 'f-tests': data.eval_p,
+    'f-estrategia': data.det_interv,
+    'obs-gen': data.examen_mental?.obs, 'obs-afe': data.examen_mental?.afe,
+    'obs-cog': data.examen_mental?.cog, 'obs-vol': data.examen_mental?.vol,
+  };
+  Object.entries(map).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el && val) el.value = val;
+  });
+  // adherencia
+  if (data.adherencia) {
+    const vals = [data.adherencia.asistencia, data.adherencia.dieta, data.adherencia.farma, data.adherencia.higiene];
+    vals.forEach((v, i) => { updateAdh(i, v); document.getElementById(`adh-${i}`).value = v; });
+  }
+}
+
+async function guardarFicha() {
+  if (!currentPatient) { showToast('Selecciona un paciente primero', 'error'); return; }
+
+  const btn = document.getElementById('btn-save-ficha');
+  btn.classList.add('loading');
+
+  const payload = {
+    dni: currentPatient.dni,
+    fecha_entrevista: document.getElementById('f-fecha').value,
+    filiacion: {
+      modalidad: document.getElementById('f-modalidad').value,
+      turno:     document.getElementById('f-turno').value,
+      te:        document.getElementById('f-te').value,
+      t_dialisis:document.getElementById('f-tdialisis').value,
+      acceso:    document.getElementById('f-acceso').value,
+    },
+    antecedentes: document.getElementById('f-antecedentes').value,
+    conciencia:   document.getElementById('f-conciencia').value,
+    dinamica:     document.getElementById('f-dinamica').value,
+    det_dinamica: document.getElementById('f-det-dinamica').value,
+    nombre_cuidador: document.getElementById('f-cuidador').value,
+    instruccion:  document.getElementById('f-instruccion').value,
+    exp_laboral:  document.getElementById('f-laboral').value,
+    adherencia: {
+      asistencia: parseInt(document.getElementById('adh-0').value),
+      dieta:      parseInt(document.getElementById('adh-1').value),
+      farma:      parseInt(document.getElementById('adh-2').value),
+      higiene:    parseInt(document.getElementById('adh-3').value),
+    },
+    examen_mental: {
+      obs: document.getElementById('obs-gen').value,
+      afe: document.getElementById('obs-afe').value,
+      cog: document.getElementById('obs-cog').value,
+      vol: document.getElementById('obs-vol').value,
+    },
+    diagnostico: document.getElementById('f-diagnostico').value,
+    eval_p:      document.getElementById('f-tests').value,
+    det_interv:  document.getElementById('f-estrategia').value,
+    tipo_interv: document.getElementById('f-tipo-interv').value,
+  };
+
+  const result = await apiFetch('/fichas', 'POST', payload);
+  btn.classList.remove('loading');
+  showToast(result !== null ? 'Ficha guardada en Supabase ✓' : 'Ficha guardada (modo demo) ✓');
+}
+
+function exportarFichaPDF() {
+  if (!currentPatient) { showToast('Selecciona un paciente primero', 'error'); return; }
+  // Redirige al endpoint PDF del backend
+  const url = `${API_BASE}/fichas/${currentPatient.dni}/pdf`;
+  window.open(url, '_blank');
+  showToast('Abriendo PDF...');
+}
+
+// ════════════════════════════════════════════════════════════
+//  LOTEP
+// ════════════════════════════════════════════════════════════
+function applyLOTEP(checked) {
+  const vals = checked ? {
+    'obs-gen': 'Aliño adecuado. Sin alteraciones de la marcha.',
+    'obs-afe': 'Eutímico/a. Afecto congruente con el discurso.',
+    'obs-cog': 'LOTEP: orientado/a en tiempo, espacio y persona. Memoria conservada.',
+    'obs-vol': 'Actividad volitiva conservada. Sin alteraciones conductuales.',
+  } : { 'obs-gen':'', 'obs-afe':'', 'obs-cog':'', 'obs-vol':'' };
+  Object.entries(vals).forEach(([id,v]) => document.getElementById(id).value = v);
+}
+
+// ════════════════════════════════════════════════════════════
+//  ADHERENCIA SLIDER
+// ════════════════════════════════════════════════════════════
+function updateAdh(idx, val) {
+  const el = document.getElementById(`adh-val-${idx}`);
+  el.textContent = val;
+  const colors = { '1':'#C62828','2':'#EF5350','3':'#FFB300','4':'#00A896','5':'#00695C' };
+  el.style.color = colors[val] || 'var(--teal-500)';
+}
+
+// ════════════════════════════════════════════════════════════
+//  MONITOR CHART
+// ════════════════════════════════════════════════════════════
+let chartInstance = null;
+function initMonitorChart() {
+  const canvas = document.getElementById('monitor-chart');
+  if (!canvas) return;
+  if (chartInstance) { chartInstance.destroy(); }
+  const labels = ['S1','S2','S3','S4','S5','S6','S7','S8','S9'];
+  chartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Afectivo',   data:[5,4,6,5,7,6,7,8,8], borderColor:'#00897B', backgroundColor:'rgba(0,137,123,.08)', tension:.45, fill:true, pointRadius:4, pointBackgroundColor:'#00897B' },
+        { label:'Ansioso',    data:[7,6,5,5,4,4,3,3,2], borderColor:'#EF5350', backgroundColor:'rgba(239,83,80,.06)', tension:.45, fill:true, pointRadius:4, pointBackgroundColor:'#EF5350' },
+        { label:'Adherencia', data:[3,4,4,5,5,6,6,7,7], borderColor:'#FFB300', backgroundColor:'rgba(255,179,0,.06)', tension:.45, fill:true, pointRadius:4, pointBackgroundColor:'#FFB300' },
+        { label:'Sueño',      data:[4,4,5,5,6,6,7,7,8], borderColor:'#1565C0', backgroundColor:'rgba(21,101,192,.06)',tension:.45, fill:true, pointRadius:4, pointBackgroundColor:'#1565C0' },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      animation: { duration: 800, easing: 'easeInOutQuart' },
+      plugins:{ legend:{position:'top', labels:{font:{size:11}, boxWidth:12, padding:10}} },
+      scales:{
+        y:{ min:0, max:10, ticks:{stepSize:2, font:{size:11}}, grid:{color:'rgba(0,0,0,.04)'} },
+        x:{ ticks:{font:{size:11}}, grid:{display:false} }
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  HISTORIA CLÍNICA
+// ════════════════════════════════════════════════════════════
+function descargarPDFHistoria() {
+  if (!currentPatient) { showToast('Sin paciente seleccionado', 'error'); return; }
+  window.open(`${API_BASE}/historia/${currentPatient.dni}/pdf`, '_blank');
+  showToast('Generando PDF de expediente...');
+}
+
+// ════════════════════════════════════════════════════════════
+//  REGISTRO DE ATENCIONES
+// ════════════════════════════════════════════════════════════
+async function loadRegistros() {
+  const now = new Date();
+  const mes = now.toLocaleDateString('es-PE', {month:'long', year:'numeric'});
+  document.getElementById('registro-mes').textContent = mes.charAt(0).toUpperCase()+mes.slice(1);
+
+  const data = await apiFetch(`/atenciones?mes=${now.getMonth()+1}&anio=${now.getFullYear()}`)
+               || DEMO.agenda.map(a => ({...a, fecha: todayISO()}));
+
+  const badges = { 'Atendido':'badge-green','Pendiente':'badge-amber','Programado':'badge-blue' };
+  const tbody  = document.getElementById('registro-table-body');
+  tbody.innerHTML = data.map(a => `<tr>
+    <td>${a.paciente||'–'}</td>
+    <td style="color:var(--muted);">${a.dni||'–'}</td>
+    <td>${a.tipo||a.tipo_cita||'–'}</td>
+    <td>${a.fecha||a.hora||'–'}</td>
+    <td><span class="badge ${badges[a.estado]||'badge-blue'}">${a.estado||'–'}</span></td>
+    <td><button class="btn btn-outline" style="padding:4px 10px;font-size:11px;"
+      onclick="showToast('Abriendo atención...')">Ver</button></td>
+  </tr>`).join('');
+}
+
+async function guardarAtencion() {
+  const dni   = document.getElementById('aten-dni').value.trim();
+  const fecha = document.getElementById('aten-fecha').value;
+  const tipo  = document.getElementById('aten-tipo').value;
+  const obs   = document.getElementById('aten-obs').value;
+  if (!dni||!fecha) { showToast('DNI y fecha son obligatorios','error'); return; }
+
+  await apiFetch('/atenciones','POST',{dni,fecha,tipo_cita:tipo,observaciones:obs,estado:'Atendido'});
+  closeModal('modal-atencion');
+  showToast('Atención registrada');
+  loadRegistros();
+}
+
+// ════════════════════════════════════════════════════════════
+//  EVOLUCIÓN
+// ════════════════════════════════════════════════════════════
+let evolChart = null;
+async function loadEvolucion() {
+  if (!currentPatient) return;
+  document.getElementById('evolucion-paciente').textContent = `${currentPatient.nombre} · DNI: ${currentPatient.dni}`;
+
+  const data = await apiFetch(`/evolucion/${currentPatient.dni}`)
+               || { notas:[], monitoreo:[[5,4,6,5,7,6,7,8,8],[7,6,5,5,4,4,3,3,2],[3,4,4,5,5,6,6,7,7],[4,4,5,5,6,6,7,7,8]] };
+
+  const ctx = document.getElementById('evolucion-chart');
+  if (evolChart) evolChart.destroy();
+  if (ctx) {
+    evolChart = new Chart(ctx, {
+      type:'line',
+      data: {
+        labels:['S1','S2','S3','S4','S5','S6','S7','S8','S9'],
+        datasets:[
+          {label:'Afectivo', data:data.monitoreo[0], borderColor:'#00897B', tension:.4,pointRadius:4,fill:false},
+          {label:'Ansioso',  data:data.monitoreo[1], borderColor:'#EF5350', tension:.4,pointRadius:4,fill:false},
+          {label:'Adherencia',data:data.monitoreo[2],borderColor:'#FFB300', tension:.4,pointRadius:4,fill:false},
+          {label:'Sueño',    data:data.monitoreo[3], borderColor:'#1565C0', tension:.4,pointRadius:4,fill:false},
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,
+        animation:{duration:800},
+        plugins:{legend:{position:'top',labels:{font:{size:11}}}},
+        scales:{y:{min:0,max:10},x:{grid:{display:false}}}
+      }
+    });
+  }
+
+  const notasEl = document.getElementById('evolucion-notas');
+  const notas   = data.notas || [];
+  notasEl.innerHTML = notas.length ? notas.map(n => `
+    <div class="agenda-item" style="flex-direction:column;align-items:flex-start;gap:6px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:10px;width:100%;">
+        <div class="agenda-time">${n.fecha}</div>
+        <span class="badge badge-blue" style="font-size:10px;">${n.tipo}</span>
+      </div>
+      <p style="font-size:13px;line-height:1.6;color:var(--text);">${n.nota}</p>
+    </div>
+  `).join('') : '<div class="empty-state"><i class="fas fa-notes-medical"></i><p>Sin notas de evolución</p></div>';
+}
+
+async function guardarNota() {
+  if (!currentPatient) { showToast('Selecciona un paciente','error'); return; }
+  const fecha = document.getElementById('evol-fecha').value;
+  const tipo  = document.getElementById('evol-tipo').value;
+  const nota  = document.getElementById('evol-nota').value;
+  if (!nota) { showToast('Escribe la nota de evolución','error'); return; }
+
+  await apiFetch('/evolucion','POST',{dni:currentPatient.dni,fecha,tipo,nota});
+  closeModal('modal-evolucion');
+  showToast('Nota guardada');
+  document.getElementById('evol-nota').value='';
+  loadEvolucion();
+}
+
+// ════════════════════════════════════════════════════════════
+//  PRUEBAS PSICOMÉTRICAS
+// ════════════════════════════════════════════════════════════
+const PRUEBAS = {
+  hads:  {nombre:'HADS', desc:'Ansiedad y Depresión Hospitalaria', max:[21,21], dims:['Ansiedad','Depresión'], vals:[11,7], cortes:['Normal (0–7)','Dudoso (8–10)','Clínico (≥11)']},
+  eat26: {nombre:'EAT-26', desc:'Actitudes Alimentarias', max:[78], dims:['Total'], vals:[14], cortes:['Normal (<20)','Riesgo (≥20)']},
+  faces: {nombre:'FACES III', desc:'Funcionamiento Familiar', max:[80,80], dims:['Cohesión','Adaptabilidad'], vals:[55,40], cortes:[]},
+  caepo: {nombre:'CAEPO', desc:'Calidad de Vida', max:[100], dims:['Total'], vals:[62], cortes:[]},
+  panss: {nombre:'PANSS', desc:'Síntomas Psicóticos', max:[49,49,112], dims:['Positiva','Negativa','General'], vals:[12,14,35], cortes:[]},
+  bacs:  {nombre:'BACS', desc:'Cognición en Esquizofrenia', max:[100], dims:['Índice Compuesto'], vals:[78], cortes:[]},
+};
+
+function loadPrueba(code) {
+  const p   = PRUEBAS[code];
+  const card = document.getElementById('prueba-result-card');
+  if (!p) return;
+
+  const bars = p.dims.map((d,i) => {
+    const pct = Math.round((p.vals[i]/p.max[i])*100);
+    return `
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:13px;">${d}</span>
+          <strong>${p.vals[i]} / ${p.max[i]}</strong>
+        </div>
+        <div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:${pct>60?'var(--amber)':'var(--teal-400)'};"></div></div>
+      </div>`;
+  }).join('');
+
+  card.innerHTML = `
+    <div class="card-header">
+      <span class="card-title">${p.nombre} – ${currentPatient?.nombre||'Sin paciente'}</span>
+      <span class="badge badge-amber">${p.desc}</span>
+    </div>
+    ${bars}
+    ${p.cortes.length ? `<div style="background:var(--teal-50);border-radius:var(--r-sm);padding:12px;font-size:12.5px;color:var(--teal-700);margin-top:8px;">
+      <strong>Puntos de corte:</strong> ${p.cortes.join(' · ')}
+    </div>` : ''}
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn btn-outline" style="flex:1;" onclick="showToast('Guardando resultado...')">
+        <i class="fas fa-save"></i> Guardar
+      </button>
+      <button class="btn btn-primary" style="flex:1;" onclick="showToast('Abriendo aplicación...')">
+        <i class="fas fa-play"></i> Aplicar
+      </button>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+//  ADMINISTRACIÓN / DASHBOARD
+// ════════════════════════════════════════════════════════════
+let adminChart = null;
+async function loadAdmin() {
+  const data = await apiFetch('/admin/stats') || { atenciones:148, activos:34, hd:22, dipac:12,
+    tipos:['Psicológica','Individual','Familiar','Evaluación'], counts:[55,40,28,25] };
+
+  countUp(document.getElementById('admin-atenciones'), data.atenciones);
+  countUp(document.getElementById('admin-pacientes'), data.activos);
+  countUp(document.getElementById('admin-hd'), data.hd);
+  countUp(document.getElementById('admin-dipac'), data.dipac);
+
+  const ctx = document.getElementById('admin-chart');
+  if (!ctx) return;
+  if (adminChart) adminChart.destroy();
+  adminChart = new Chart(ctx, {
+    type:'doughnut',
+    data:{
+      labels: data.tipos,
+      datasets:[{
+        data: data.counts,
+        backgroundColor:['#00897B','#1565C0','#FFB300','#EF5350'],
+        borderWidth:0, hoverOffset:8
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      animation:{duration:900},
+      plugins:{legend:{position:'right',labels:{font:{size:12},padding:16}}}
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  INFORME MENSUAL
+// ════════════════════════════════════════════════════════════
+async function generarInforme() {
+  const mes  = document.getElementById('informe-mes').value;
+  const anio = document.getElementById('informe-anio').value;
+  const btn  = document.querySelector('#page-informe .btn-primary');
+  btn.classList.add('loading');
+
+  const data = await apiFetch(`/informe?mes=${mes}&anio=${anio}`)
+               || { atenciones:148, pacientes:34, tipos:{psicologica:55,individual:40,familiar:28,evaluacion:25} };
+
+  btn.classList.remove('loading');
+  document.getElementById('informe-preview').innerHTML = `
+    <div style="border-top:3px solid var(--teal-400);padding-top:20px;">
+      <h3 style="font-family:var(--font-h);margin-bottom:16px;">
+        Resumen – ${['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][mes]} ${anio}
+      </h3>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;">
+        <div style="background:var(--teal-50);border-radius:var(--r-md);padding:18px;text-align:center;">
+          <div style="font-size:28px;font-weight:700;font-family:var(--font-h);color:var(--teal-700);">${data.atenciones}</div>
+          <div style="font-size:12px;color:var(--muted);">Total Atenciones</div>
+        </div>
+        <div style="background:#E3F2FD;border-radius:var(--r-md);padding:18px;text-align:center;">
+          <div style="font-size:28px;font-weight:700;font-family:var(--font-h);color:#1565C0;">${data.pacientes}</div>
+          <div style="font-size:12px;color:var(--muted);">Pacientes Atendidos</div>
+        </div>
+        <div style="background:#FFF8E1;border-radius:var(--r-md);padding:18px;text-align:center;">
+          <div style="font-size:28px;font-weight:700;font-family:var(--font-h);color:#E65100;">${data.tipos?.individual||0}</div>
+          <div style="font-size:12px;color:var(--muted);">Intervenciones Indiv.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn btn-outline" onclick="window.open('${API_BASE}/informe/pdf?mes=${mes}&anio=${anio}','_blank');showToast('Generando PDF...')">
+          <i class="fas fa-file-pdf"></i> Descargar PDF
+        </button>
+        <button class="btn btn-primary" onclick="window.open('${API_BASE}/informe/word?mes=${mes}&anio=${anio}','_blank');showToast('Generando Word...')">
+          <i class="fas fa-file-word"></i> Descargar Word
+        </button>
+      </div>
+    </div>`;
+  showToast('Informe generado');
+}
+
+// ════════════════════════════════════════════════════════════
+//  MANTENIMIENTO
+// ════════════════════════════════════════════════════════════
+async function checkSystemStatus() {
+  const el = document.getElementById('system-status');
+  const data = await apiFetch('/status') || {
+    db:'Supabase (demo)', tablas:['pacientes','agenda','fichas','evolucion'],
+    version:'1.0.0', modo:'Demo local'
+  };
+  el.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div>🗄️ <strong>Base de datos:</strong> ${data.db||'Supabase PostgreSQL'}</div>
+      <div>🔧 <strong>Versión:</strong> ${data.version||'1.0.0'}</div>
+      <div>🟢 <strong>Modo:</strong> ${data.modo||'Producción'}</div>
+      <div>📊 <strong>Tablas:</strong> ${(data.tablas||[]).join(', ')}</div>
+    </div>`;
+}
+
+async function accionSistema(accion) {
+  const mensajes = {
+    backup: 'Iniciando respaldo de base de datos...',
+    vacuum: 'Esta acción es irreversible. ¿Confirmar?',
+    schema: 'Actualizando esquema de tablas...',
+    export: 'Preparando exportación CSV...',
+  };
+  if (accion === 'vacuum') {
+    if (!confirm('¿Estás seguro de que deseas vaciar los registros? Esta acción no se puede deshacer.')) return;
+  }
+  showToast(mensajes[accion] || 'Ejecutando...');
+  const result = await apiFetch('/mantenimiento', 'POST', { accion });
+  if (result) showToast(`Acción '${accion}' completada`);
+  else showToast(`Acción '${accion}' completada (demo)`);
+}
+
+// ════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════
+// Verificar sesión existente al cargar
+window.addEventListener('load', async () => {
+  if (supabase_client && SUPABASE_URL !== 'https://TU_PROYECTO.supabase.co') {
+    const { data: { session } } = await supabase_client.auth.getSession();
+    if (session) {
+      currentUser = session.user;
+      loginSuccess(session.user.email);
+    }
+  }
+  initApp();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.so
+venv/
+.venv/
+env/
+.env
+
+# Supabase / Secrets (¡NUNCA subir esto!)
+.env
+.env.*
+*.secret
+secrets.toml
+
+# Bases de datos locales (las SQLite antiguas)
+*.db
+*.sqlite
+*.sqlite3
+
+# Archivos temporales PDF / Word generados
+temp_*.png
+temp_*.pdf
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Tests / coverage
+.coverage
+htmlcov/
+.pytest_cache/
