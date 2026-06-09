@@ -2328,6 +2328,8 @@
   <!-- TOAST -->
   <div id="toast"><i class="fas fa-check-circle" id="toast-icon"></i><span id="toast-msg">Acción completada</span></div>
 
+  <!-- jsPDF — generación de PDF en el browser sin backend -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <!-- Chart.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 
@@ -2560,8 +2562,11 @@
       const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
       const fecha = now.toLocaleDateString('es-PE', opts);
       document.getElementById('fecha-hoy').textContent = fecha.charAt(0).toUpperCase() + fecha.slice(1);
-      // set fecha defaults en inputs
       document.querySelectorAll('input[type=date]').forEach(i => { if (!i.value) i.value = todayISO(); });
+      // Mostrar agenda vacía de inmediato, sin datos demo
+      renderAgendaTable([]);
+      renderAgendaList([]);
+      // Intentar cargar del backend; si falla, queda vacío (no demo)
       loadAgenda();
     }
 
@@ -2571,25 +2576,28 @@
     let agendaFilter = 'all';
 
     async function loadAgenda() {
-      const data = await apiFetch(`/agenda?fecha=${todayISO()}`) || DEMO.agenda;
-      const kpi = await apiFetch(`/kpi?fecha=${todayISO()}`) || DEMO.kpi;
+      const data = await apiFetch(`/agenda?fecha=${todayISO()}`);
+      const kpi = await apiFetch(`/kpi?fecha=${todayISO()}`);
 
-      // KPIs con conteo animado
-      const kpiMap = {
-        'kpi-atendidos': kpi.atendidos,
-        'kpi-pendientes': kpi.pendientes,
-        'kpi-activos': kpi.activos,
-        'kpi-alertas': kpi.alertas,
-      };
-      Object.entries(kpiMap).forEach(([id, val]) => {
-        const el = document.getElementById(id);
-        if (el) countUp(el, val);
-      });
-      const atEl = document.getElementById('kpi-atendidos-delta');
-      if (atEl) atEl.textContent = `↑ +${kpi.atendidos} vs ayer`;
+      // KPIs — solo si hay respuesta real
+      if (kpi) {
+        const kpiMap = {
+          'kpi-atendidos': kpi.atendidos,
+          'kpi-pendientes': kpi.pendientes,
+          'kpi-activos': kpi.activos,
+          'kpi-alertas': kpi.alertas,
+        };
+        Object.entries(kpiMap).forEach(([id, val]) => {
+          const el = document.getElementById(id);
+          if (el) countUp(el, val);
+        });
+        const atEl = document.getElementById('kpi-atendidos-delta');
+        if (atEl) atEl.textContent = `↑ +${kpi.atendidos} vs ayer`;
+      }
 
-      renderAgendaTable(data);
-      renderAgendaList(data);
+      // Agenda — array vacío si no hay backend
+      renderAgendaTable(data || []);
+      renderAgendaList(data || []);
     }
 
     function renderAgendaTable(items) {
@@ -2865,10 +2873,224 @@
 
     function exportarFichaPDF() {
       if (!currentPatient) { showToast('Selecciona un paciente primero', 'error'); return; }
-      // Redirige al endpoint PDF del backend
-      const url = `${API_BASE}/fichas/${currentPatient.dni}/pdf`;
-      window.open(url, '_blank');
-      showToast('Abriendo PDF...');
+
+      const btn = document.getElementById('btn-export-pdf');
+      if (btn) btn.classList.add('loading');
+
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const W = 210, margin = 18, lineH = 6.5, colW = 85;
+        let y = 0;
+
+        // ── Helpers ──────────────────────────────────────────────
+        const TEAL = [0, 105, 92];
+        const TEAL_L = [224, 242, 241];
+        const GRAY = [107, 114, 128];
+        const DARK = [26, 26, 26];
+
+        function checkPage(needed = 20) {
+          if (y + needed > 275) { doc.addPage(); y = 20; }
+        }
+
+        function header() {
+          // Franja superior teal
+          doc.setFillColor(...TEAL);
+          doc.rect(0, 0, W, 22, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(15); doc.setFont('helvetica', 'bold');
+          doc.text('FICHA PSICOLÓGICA VIRTUAL', margin, 10);
+          doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+          doc.text('Hospital Nacional Ramiro Prialé Prialé – EsSalud · Huancayo, Perú', margin, 16);
+          doc.text(`Fecha: ${new Date().toLocaleDateString('es-PE')}`, W - margin, 16, { align: 'right' });
+          y = 28;
+        }
+
+        function sectionTitle(title) {
+          checkPage(14);
+          doc.setFillColor(...TEAL);
+          doc.rect(margin, y, W - margin * 2, 8, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+          doc.text(title, margin + 3, y + 5.5);
+          doc.setTextColor(...DARK);
+          y += 11;
+        }
+
+        function kv(label, value, x = margin, w = W - margin * 2) {
+          checkPage(lineH + 2);
+          doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...GRAY);
+          doc.text((label || '').toUpperCase(), x, y);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...DARK);
+          const val = String(value || '–');
+          const lines = doc.splitTextToSize(val, w - 38);
+          doc.text(lines, x + 38, y);
+          y += Math.max(lineH, lines.length * 5.2);
+        }
+
+        function kvRow(pairs) {
+          // 2 columnas
+          const xL = margin, xR = margin + colW + 5;
+          const startY = y;
+          pairs.forEach((pair, i) => {
+            const x = i % 2 === 0 ? xL : xR;
+            if (i % 2 === 0 && i > 0) y += lineH;
+            kv(pair[0], pair[1], x, colW);
+          });
+          if (pairs.length % 2 !== 0) y += lineH;
+        }
+
+        function textBlock(label, value) {
+          checkPage(20);
+          doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...GRAY);
+          doc.text((label || '').toUpperCase(), margin, y);
+          y += 5;
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...DARK);
+          const lines = doc.splitTextToSize(value || '–', W - margin * 2);
+          lines.forEach(line => {
+            checkPage(6);
+            doc.text(line, margin, y);
+            y += 5;
+          });
+          y += 2;
+        }
+
+        function adhBar(label, val, max = 5) {
+          checkPage(10);
+          const x = margin, bW = W - margin * 2 - 30;
+          doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...DARK);
+          doc.text(label, x, y);
+          doc.text(`${val}/${max}`, W - margin, y, { align: 'right' });
+          y += 4;
+          doc.setFillColor(229, 233, 232);
+          doc.roundedRect(x, y, bW, 3, 1, 1, 'F');
+          const pct = Math.min(val / max, 1);
+          doc.setFillColor(...TEAL);
+          doc.roundedRect(x, y, bW * pct, 3, 1, 1, 'F');
+          y += 7;
+        }
+
+        // ── Construir PDF ─────────────────────────────────────────
+        header();
+
+        // I. Datos de filiación
+        sectionTitle('I. DATOS DE FILIACIÓN Y ESTADO CLÍNICO');
+        kvRow([
+          ['Paciente', currentPatient.nombre],
+          ['DNI', currentPatient.dni],
+          ['Fecha de entrevista', document.getElementById('f-fecha')?.value || ''],
+          ['Modalidad', document.getElementById('f-modalidad')?.value || ''],
+          ['Tiempo de enfermedad', document.getElementById('f-te')?.value || ''],
+          ['Turno', document.getElementById('f-turno')?.value || ''],
+          ['Acceso vascular', document.getElementById('f-acceso')?.value || ''],
+          ['Tiempo en diálisis', document.getElementById('f-tdialisis')?.value || ''],
+        ]);
+        y += 2;
+        textBlock('Antecedentes clínicos', document.getElementById('f-antecedentes')?.value);
+        textBlock('Conciencia de la enfermedad', document.getElementById('f-conciencia')?.value);
+
+        // II. Datos complementarios y sociales
+        sectionTitle('II. DATOS COMPLEMENTARIOS Y SOCIALES');
+        kvRow([
+          ['Dinámica familiar', document.getElementById('f-dinamica')?.value || ''],
+          ['Cuidador / Responsable', document.getElementById('f-cuidador')?.value || ''],
+          ['Instrucción', document.getElementById('f-instruccion')?.value || ''],
+          ['Experiencia laboral', document.getElementById('f-laboral')?.value || ''],
+        ]);
+        textBlock('Anotación dinámica familiar', document.getElementById('f-det-dinamica')?.value);
+
+        // Escala de adherencia
+        checkPage(40);
+        doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...GRAY);
+        doc.text('ESCALA DE ADHERENCIA AL TRATAMIENTO (1–5)', margin, y); y += 7;
+        adhBar('Asistencia', parseInt(document.getElementById('adh-0')?.value || 3));
+        adhBar('Dieta', parseInt(document.getElementById('adh-1')?.value || 3));
+        adhBar('Farmacológica', parseInt(document.getElementById('adh-2')?.value || 4));
+        adhBar('Higiene', parseInt(document.getElementById('adh-3')?.value || 4));
+        y += 2;
+
+        // III. Examen mental
+        sectionTitle('III. EXAMEN DEL ESTADO MENTAL');
+        textBlock('1. Observaciones generales', document.getElementById('obs-gen')?.value);
+        textBlock('2. Estado afectivo y conductual', document.getElementById('obs-afe')?.value);
+        textBlock('3. Aspectos cognoscitivos', document.getElementById('obs-cog')?.value);
+        textBlock('4. Actividad voluntaria', document.getElementById('obs-vol')?.value);
+
+        // IV. Monitoreo bio-conductual (tabla S1-S9)
+        sectionTitle('IV. MONITOREO BIO-CONDUCTUAL S1–S9');
+        checkPage(30);
+        const monRows = document.querySelectorAll('#monitoreo-tbody tr');
+        const sesiones = ['Área', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9'];
+        const colMW = (W - margin * 2) / sesiones.length;
+        // encabezado tabla
+        doc.setFillColor(...TEAL_L);
+        doc.rect(margin, y, W - margin * 2, 7, 'F');
+        doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEAL);
+        sesiones.forEach((s, i) => doc.text(s, margin + i * colMW + 1, y + 5));
+        y += 8;
+        const areaColors = { 0: TEAL, 1: [239, 83, 80], 2: [255, 179, 0], 3: [21, 101, 192] };
+        monRows.forEach((row, ri) => {
+          checkPage(7);
+          const cells = row.querySelectorAll('td');
+          if (ri % 2 === 0) { doc.setFillColor(248, 250, 249); doc.rect(margin, y, W - margin * 2, 6, 'F'); }
+          doc.setFont('helvetica', 'normal'); doc.setTextColor(...(areaColors[ri] || DARK));
+          cells.forEach((c, i) => {
+            doc.setFontSize(i === 0 ? 7.5 : 7);
+            doc.setFont('helvetica', i === 0 ? 'bold' : 'normal');
+            doc.text(c.textContent.trim(), margin + i * colMW + 1, y + 4.5);
+          });
+          y += 6;
+        });
+        y += 4;
+
+        // V. Diagnóstico e intervención
+        sectionTitle('V. DIAGNÓSTICO E INTERVENCIÓN PSICOLÓGICA');
+        textBlock('Diagnóstico psicológico', document.getElementById('f-diagnostico')?.value);
+        kvRow([
+          ['Tipo de intervención', document.getElementById('f-tipo-interv')?.value || ''],
+          ['Tests aplicados', document.getElementById('f-tests')?.value || ''],
+        ]);
+        textBlock('Estrategia de intervención', document.getElementById('f-estrategia')?.value);
+
+        // Firma
+        checkPage(28);
+        y += 8;
+        doc.setDrawColor(...TEAL); doc.setLineWidth(0.3);
+        doc.line(margin, y, margin + 70, y);
+        y += 5;
+        doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY);
+        doc.text('Psicólogo/a Internista – Servicio de Psiconefrología', margin, y);
+        y += 4;
+        doc.text('Hospital Nacional Ramiro Prialé Prialé · EsSalud · Huancayo', margin, y);
+
+        // Número de página en cada hoja
+        const pageCount = doc.getNumberOfPages();
+        for (let p = 1; p <= pageCount; p++) {
+          doc.setPage(p);
+          doc.setFontSize(7); doc.setTextColor(...GRAY);
+          doc.text(
+            `Sistema de Gestión Clínica – Psiconefrología HNRPP EsSalud`,
+            margin, 290
+          );
+          doc.text(`Página ${p} de ${pageCount}`, W - margin, 290, { align: 'right' });
+        }
+
+        // Guardar
+        const nombre = `Ficha_${currentPatient.dni}_${todayISO()}.pdf`;
+        doc.save(nombre);
+        showToast(`PDF generado: ${nombre}`);
+
+      } catch (err) {
+        console.error('Error generando PDF:', err);
+        showToast('Error al generar PDF: ' + err.message, 'error');
+      } finally {
+        const btn = document.getElementById('btn-export-pdf');
+        if (btn) btn.classList.remove('loading');
+      }
     }
 
     // ════════════════════════════════════════════════════════════
