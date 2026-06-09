@@ -2207,31 +2207,105 @@
 
   <!-- ═══════════════════ MODAL: NUEVA CITA ═══════════════════════ -->
   <div class="modal-bg" id="modal-cita">
-    <div class="modal">
+    <div class="modal" style="width:620px;">
       <div class="modal-header">
         <span class="modal-title">📅 Programar Nueva Cita</span>
         <button class="modal-close" onclick="closeModal('modal-cita')"><i class="fas fa-times"></i></button>
       </div>
-      <div class="form-grid">
-        <div class="form-group"><label class="field-label">DNI del Paciente</label><input type="text" id="cita-dni"
-            placeholder="8 dígitos" maxlength="8" /></div>
-        <div class="form-group"><label class="field-label">Fecha de Cita</label><input type="date" id="cita-fecha" />
+
+      <!-- PASO 1: buscar o registrar paciente -->
+      <div id="cita-paso1">
+        <p class="section-label">Paso 1 — Identificar paciente</p>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <input type="text" id="cita-dni" placeholder="DNI (8 dígitos)" maxlength="8" style="flex:1;"
+            oninput="buscarPacienteCita(this.value)" />
+          <button class="btn btn-outline" onclick="buscarPacienteCita(document.getElementById('cita-dni').value)">
+            <i class="fas fa-search"></i> Buscar
+          </button>
         </div>
-        <div class="form-group full"><label class="field-label">Tipo de Atención</label>
-          <select id="cita-tipo">
-            <option>Atención Psicológica</option>
-            <option>Intervención Individual</option>
-            <option>Intervención Familiar</option>
-            <option>Evaluación Diagnóstica</option>
-          </select>
+        <!-- resultado búsqueda -->
+        <div id="cita-paciente-encontrado"
+          style="display:none;background:var(--teal-50);border-radius:var(--r-sm);padding:12px 16px;border-left:3px solid var(--teal-400);margin-bottom:14px;">
+          <div style="font-size:13px;font-weight:600;color:var(--teal-700);" id="cita-paciente-label">–</div>
+          <div style="font-size:11px;color:var(--muted);" id="cita-paciente-sub">–</div>
         </div>
-        <div class="form-group full"><label class="field-label">Observaciones Iniciales</label>
-          <textarea id="cita-obs" placeholder="Motivo de referencia o notas previas..."></textarea>
+        <!-- formulario nuevo paciente (se muestra si no existe) -->
+        <div id="cita-nuevo-paciente" style="display:none;">
+          <div
+            style="background:#FFF8E1;border-radius:var(--r-sm);padding:10px 14px;font-size:12.5px;color:#795548;margin-bottom:12px;border-left:3px solid var(--amber);">
+            <i class="fas fa-info-circle"></i> DNI no encontrado. Completa los datos para registrar al paciente.
+          </div>
+          <div class="form-grid">
+            <div class="form-group"><label class="field-label">Nombres</label><input type="text" id="np-nombres"
+                placeholder="Nombres completos" /></div>
+            <div class="form-group"><label class="field-label">Apellidos</label><input type="text" id="np-apellidos"
+                placeholder="Apellidos completos" /></div>
+            <div class="form-group"><label class="field-label">Edad</label><input type="number" id="np-edad" min="0"
+                max="120" placeholder="años" /></div>
+            <div class="form-group"><label class="field-label">Sexo</label>
+              <select id="np-sexo">
+                <option value="F">Femenino</option>
+                <option value="M">Masculino</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="field-label">Servicio</label>
+              <select id="np-servicio">
+                <option>HD</option>
+                <option>DIPAC</option>
+                <option>ERCA</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="field-label">Teléfono</label><input type="text" id="np-telefono"
+                placeholder="9XXXXXXXX" /></div>
+            <div class="form-group full"><label class="field-label">Dirección</label><input type="text"
+                id="np-direccion" placeholder="Dirección actual" /></div>
+          </div>
         </div>
       </div>
+
+      <!-- PASO 2: datos de la cita (se activa al tener paciente) -->
+      <div id="cita-paso2" style="margin-top:16px;">
+        <p class="section-label">Paso 2 — Datos de la cita</p>
+        <div class="form-grid">
+          <div class="form-group"><label class="field-label">Fecha de Cita</label><input type="date" id="cita-fecha" />
+          </div>
+          <div class="form-group"><label class="field-label">Hora</label>
+            <select id="cita-hora">
+              <option>07:00</option>
+              <option>07:30</option>
+              <option>08:00</option>
+              <option>08:30</option>
+              <option>09:00</option>
+              <option>09:30</option>
+              <option>10:00</option>
+              <option>10:30</option>
+              <option>11:00</option>
+              <option>11:30</option>
+              <option>12:00</option>
+              <option>14:00</option>
+              <option>14:30</option>
+              <option>15:00</option>
+              <option>15:30</option>
+              <option>16:00</option>
+            </select>
+          </div>
+          <div class="form-group full"><label class="field-label">Tipo de Atención</label>
+            <select id="cita-tipo">
+              <option>Atención Psicológica</option>
+              <option>Intervención Individual</option>
+              <option>Intervención Familiar</option>
+              <option>Evaluación Diagnóstica</option>
+            </select>
+          </div>
+          <div class="form-group full"><label class="field-label">Observaciones Iniciales</label>
+            <textarea id="cita-obs" placeholder="Motivo de referencia o notas previas..."></textarea>
+          </div>
+        </div>
+      </div>
+
       <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
         <button class="btn btn-outline" onclick="closeModal('modal-cita')">Cancelar</button>
-        <button class="btn btn-primary" onclick="agendarCita(); addRipple(event)">
+        <button class="btn btn-primary" id="btn-agendar" onclick="agendarCita(); addRipple(event)">
           <i class="fas fa-calendar-plus"></i> Agendar
         </button>
       </div>
@@ -2695,34 +2769,77 @@
     }
 
     // ════════════════════════════════════════════════════════════
-    //  CITAS
+    //  CITAS — Supabase JS directo
     // ════════════════════════════════════════════════════════════
     async function agendarCita() {
       const dni = document.getElementById('cita-dni').value.trim();
       const fecha = document.getElementById('cita-fecha').value;
+      const hora = document.getElementById('cita-hora').value;
       const tipo = document.getElementById('cita-tipo').value;
       const obs = document.getElementById('cita-obs').value;
 
-      if (!dni || !fecha) { showToast('DNI y fecha son obligatorios', 'error'); return; }
-      if (dni.length !== 8 || isNaN(dni)) { showToast('DNI debe tener 8 dígitos', 'error'); return; }
+      if (!dni || dni.length !== 8 || isNaN(dni)) {
+        showToast('DNI debe tener 8 dígitos numéricos', 'error'); return;
+      }
+      if (!fecha) { showToast('Selecciona una fecha', 'error'); return; }
 
-      const btn = document.querySelector('#modal-cita .btn-primary');
+      if (!supabase_client || SUPABASE_URL === 'https://TU_PROYECTO.supabase.co') {
+        showToast('Conecta Supabase primero', 'error'); return;
+      }
+
+      const btn = document.getElementById('btn-agendar');
       btn.classList.add('loading');
 
-      const result = await apiFetch('/agenda', 'POST', { dni, fecha, tipo_cita: tipo, observaciones: obs });
+      try {
+        // 1. Si el paciente no existe, registrarlo primero
+        if (!_citaPacienteExiste) {
+          const nombres = document.getElementById('np-nombres').value.trim();
+          const apellidos = document.getElementById('np-apellidos').value.trim();
+          if (!nombres || !apellidos) {
+            showToast('Completa nombre y apellidos del paciente', 'error');
+            btn.classList.remove('loading'); return;
+          }
+          const { error: errP } = await supabase_client.from('pacientes').insert({
+            dni,
+            nombres,
+            apellidos,
+            edad: parseInt(document.getElementById('np-edad').value) || null,
+            sexo: document.getElementById('np-sexo').value,
+            servicio: document.getElementById('np-servicio').value,
+            telefono: document.getElementById('np-telefono').value.trim() || null,
+            direccion: document.getElementById('np-direccion').value.trim() || null,
+          });
+          if (errP) throw new Error('Error al registrar paciente: ' + errP.message);
+          showToast(`Paciente ${nombres} ${apellidos} registrado ✓`);
+        }
 
-      btn.classList.remove('loading');
-      closeModal('modal-cita');
+        // 2. Crear la cita
+        const { error: errC } = await supabase_client.from('agenda').insert({
+          dni_paciente: dni,
+          fecha,
+          hora: hora + ':00',
+          tipo_cita: tipo,
+          observaciones: obs || '',
+          estado: 'Pendiente',
+        });
+        if (errC) throw new Error('Error al agendar cita: ' + errC.message);
 
-      if (result !== null) {
-        showToast('Cita agendada exitosamente');
-      } else {
-        showToast('Cita guardada (modo demo)', 'success');
+        showToast('Cita agendada exitosamente ✓');
+        closeModal('modal-cita');
+        // limpiar modal
+        ['cita-dni', 'cita-obs', 'np-nombres', 'np-apellidos', 'np-edad', 'np-telefono', 'np-direccion']
+          .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        document.getElementById('cita-paciente-encontrado').style.display = 'none';
+        document.getElementById('cita-nuevo-paciente').style.display = 'none';
+        document.getElementById('cita-fecha').value = todayISO();
+        _citaPacienteExiste = false;
+        loadAgenda();
+
+      } catch (e) {
+        showToast(e.message, 'error');
+      } finally {
+        btn.classList.remove('loading');
       }
-      // limpiar
-      ['cita-dni', 'cita-obs'].forEach(id => document.getElementById(id).value = '');
-      document.getElementById('cita-fecha').value = todayISO();
-      loadAgenda();
     }
 
     // ════════════════════════════════════════════════════════════
@@ -2734,9 +2851,33 @@
       const sala = document.getElementById('sala-num').value;
       document.getElementById('sala-label').textContent = `${sala} – Turno ${turno} – ${dia}`;
 
-      const data = await apiFetch(`/sala?sala=${encodeURIComponent(sala)}&turno=${encodeURIComponent(turno)}&dia=${encodeURIComponent(dia)}`)
-        || DEMO.sala;
-      renderSala(data);
+      let maquinas = Array.from({ length: 8 }, (_, i) => ({ maquina: i + 1, paciente: null, dni: null }));
+
+      if (supabase_client && SUPABASE_URL !== 'https://TU_PROYECTO.supabase.co') {
+        try {
+          const { data } = await supabase_client
+            .from('sala_maquinas')
+            .select('maquina, dni_paciente, pacientes(nombres, apellidos)')
+            .eq('sala', sala).eq('turno', turno).eq('dia', dia);
+          if (data) {
+            data.forEach(row => {
+              const idx = row.maquina - 1;
+              const p = row.pacientes || {};
+              if (idx >= 0 && idx < 8) {
+                maquinas[idx] = {
+                  maquina: row.maquina,
+                  paciente: p.nombres ? `${p.apellidos} ${p.nombres}` : null,
+                  dni: row.dni_paciente,
+                };
+              }
+            });
+          }
+        } catch (e) { console.warn('loadSala error:', e.message); }
+      } else {
+        const data = await apiFetch(`/sala?sala=${encodeURIComponent(sala)}&turno=${encodeURIComponent(turno)}&dia=${encodeURIComponent(dia)}`);
+        if (data) maquinas = data;
+      }
+      renderSala(maquinas);
     }
 
     function renderSala(maquinas) {
@@ -2746,53 +2887,65 @@
         const m = maquinas.find(x => x.maquina === i) || { maquina: i, paciente: null };
         const card = document.createElement('div');
         card.className = 'cama-card' + (m.paciente ? ' occupied' : '');
-
         if (m.paciente) {
           card.innerHTML = `
         <div class="cama-num">M-0${i}</div>
         <i class="fas fa-procedures" style="font-size:18px;color:var(--teal-400);"></i>
-        <div class="cama-patient">${m.paciente.split(' ').slice(0, 2).join('<br>')}</div>
-      `;
-          card.onclick = () => {
-            verFichaPaciente(m.dni, m.paciente);
-            showToast(`Máquina M-0${i} · ${m.paciente} seleccionada`);
-          };
+        <div class="cama-patient">${m.paciente.split(' ').slice(0, 2).join('<br>')}</div>`;
+          card.onclick = () => { verFichaPaciente(m.dni, m.paciente); showToast(`M-0${i} · ${m.paciente}`); };
         } else {
           card.innerHTML = `
         <div class="cama-num">M-0${i}</div>
         <i class="fas fa-plus-circle" style="font-size:22px;color:var(--border);"></i>
-        <div class="cama-empty">Libre</div>
-      `;
-          card.onclick = () => {
-            document.getElementById('asignar-maquina').value = i;
-            openModal('modal-asignar');
-          };
+        <div class="cama-empty">Libre</div>`;
+          card.onclick = () => { document.getElementById('asignar-maquina').value = i; openModal('modal-asignar'); };
         }
         grid.appendChild(card);
       }
     }
 
     async function asignarMaquina() {
-      const maquina = document.getElementById('asignar-maquina').value;
+      const maquina = parseInt(document.getElementById('asignar-maquina').value);
       const dni = document.getElementById('asignar-dni').value.trim();
       const dia = document.getElementById('sala-dia').value;
       const turno = document.getElementById('sala-turno').value;
       const sala = document.getElementById('sala-num').value;
 
       if (!maquina || !dni) { showToast('Completa todos los campos', 'error'); return; }
+      if (dni.length !== 8) { showToast('DNI debe tener 8 dígitos', 'error'); return; }
 
       const btn = document.querySelector('#modal-asignar .btn-primary');
       btn.classList.add('loading');
 
-      await apiFetch('/sala/asignar', 'POST', { maquina, dni, dia, turno, sala });
-      btn.classList.remove('loading');
-      closeModal('modal-asignar');
-      showToast(`Paciente asignado a M-0${maquina}`);
-      loadSala();
+      try {
+        if (supabase_client && SUPABASE_URL !== 'https://TU_PROYECTO.supabase.co') {
+          // Verificar que el paciente exista
+          const { data: pExists } = await supabase_client
+            .from('pacientes').select('dni').eq('dni', dni).limit(1);
+          if (!pExists || !pExists.length) {
+            showToast('DNI no encontrado. Regístralo primero en "Nueva Cita"', 'error');
+            btn.classList.remove('loading'); return;
+          }
+          const { error } = await supabase_client.from('sala_maquinas')
+            .upsert({ sala, maquina, turno, dia, dni_paciente: dni },
+              { onConflict: 'sala,maquina,turno,dia' });
+          if (error) throw new Error(error.message);
+        } else {
+          await apiFetch('/sala/asignar', 'POST', { maquina, dni, dia, turno, sala });
+        }
+        showToast(`Paciente asignado a M-0${maquina} ✓`);
+        closeModal('modal-asignar');
+        document.getElementById('asignar-dni').value = '';
+        loadSala();
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      } finally {
+        btn.classList.remove('loading');
+      }
     }
 
     // ════════════════════════════════════════════════════════════
-    //  BÚSQUEDA GLOBAL
+    //  BÚSQUEDA GLOBAL (sidebar)
     // ════════════════════════════════════════════════════════════
     let searchTimer;
     async function globalSearch(val) {
@@ -2801,24 +2954,79 @@
       if (!val || val.length < 2) { res.classList.remove('show'); return; }
 
       searchTimer = setTimeout(async () => {
-        const data = await apiFetch(`/pacientes/buscar?q=${encodeURIComponent(val)}`)
-          || DEMO.pacientes.filter(p =>
-            p.dni.includes(val) ||
-            `${p.nombres} ${p.apellidos}`.toLowerCase().includes(val.toLowerCase())
-          );
+        let data = [];
+
+        // Supabase JS directo
+        if (supabase_client && SUPABASE_URL !== 'https://TU_PROYECTO.supabase.co') {
+          try {
+            let query = supabase_client.from('pacientes').select('dni,nombres,apellidos,servicio');
+            if (/^\d+$/.test(val)) {
+              query = query.like('dni', `${val}%`);
+            } else {
+              query = query.ilike('apellidos', `%${val}%`);
+            }
+            const { data: rows, error } = await query.limit(8);
+            if (!error && rows) data = rows;
+          } catch (e) { console.warn('Search error:', e.message); }
+        }
+
+        // Fallback backend
+        if (!data.length) {
+          const bd = await apiFetch(`/pacientes/buscar?q=${encodeURIComponent(val)}`);
+          if (bd) data = bd;
+        }
 
         if (!data.length) {
-          res.innerHTML = `<div class="search-result-item" style="color:var(--muted);">Sin resultados para "${val}"</div>`;
+          res.innerHTML = `<div class="search-result-item" style="color:var(--muted);">Sin resultados — escribe el nombre completo o DNI</div>`;
         } else {
-          res.innerHTML = data.slice(0, 5).map(p => `
-        <div class="search-result-item" onclick="seleccionarPaciente('${p.dni}','${p.nombres} ${p.apellidos}')">
+          res.innerHTML = data.slice(0, 6).map(p => `
+        <div class="search-result-item"
+             onclick="seleccionarPaciente('${p.dni}','${p.nombres} ${p.apellidos}')">
           ${p.apellidos}, ${p.nombres}
           <span class="dni-tag">${p.dni} · ${p.servicio || ''}</span>
-        </div>
-      `).join('');
+        </div>`).join('');
         }
         res.classList.add('show');
-      }, 300);
+      }, 280);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  BÚSQUEDA EN MODAL DE CITA
+    // ════════════════════════════════════════════════════════════
+    let _citaPacienteExiste = false;
+
+    async function buscarPacienteCita(dni) {
+      dni = (dni || '').trim();
+      const encontrado = document.getElementById('cita-paciente-encontrado');
+      const nuevo = document.getElementById('cita-nuevo-paciente');
+      if (dni.length < 8) {
+        encontrado.style.display = 'none';
+        nuevo.style.display = 'none';
+        _citaPacienteExiste = false;
+        return;
+      }
+
+      if (!supabase_client || SUPABASE_URL === 'https://TU_PROYECTO.supabase.co') {
+        showToast('Conecta Supabase para buscar pacientes', 'error'); return;
+      }
+
+      const { data, error } = await supabase_client
+        .from('pacientes').select('*').eq('dni', dni).limit(1);
+
+      if (!error && data && data.length) {
+        const p = data[0];
+        document.getElementById('cita-paciente-label').textContent =
+          `${p.apellidos}, ${p.nombres}`;
+        document.getElementById('cita-paciente-sub').textContent =
+          `DNI: ${p.dni} · ${p.servicio || '–'} · ${p.edad || '–'} años`;
+        encontrado.style.display = 'block';
+        nuevo.style.display = 'none';
+        _citaPacienteExiste = true;
+      } else {
+        encontrado.style.display = 'none';
+        nuevo.style.display = 'block';
+        _citaPacienteExiste = false;
+      }
     }
 
     function seleccionarPaciente(dni, nombre) {
@@ -2877,9 +3085,7 @@
       const btn = document.getElementById('btn-save-ficha');
       btn.classList.add('loading');
 
-      const payload = {
-        dni: currentPatient.dni,
-        fecha_entrevista: document.getElementById('f-fecha').value,
+      const datos_json = {
         filiacion: {
           modalidad: document.getElementById('f-modalidad').value,
           turno: document.getElementById('f-turno').value,
@@ -2912,9 +3118,28 @@
         tipo_interv: document.getElementById('f-tipo-interv').value,
       };
 
-      const result = await apiFetch('/fichas', 'POST', payload);
-      btn.classList.remove('loading');
-      showToast(result !== null ? 'Ficha guardada en Supabase ✓' : 'Ficha guardada (modo demo) ✓');
+      try {
+        if (supabase_client && SUPABASE_URL !== 'https://TU_PROYECTO.supabase.co') {
+          const { error } = await supabase_client.from('fichas').insert({
+            dni_paciente: currentPatient.dni,
+            fecha_entrevista: document.getElementById('f-fecha').value,
+            datos_json,
+          });
+          if (error) throw new Error(error.message);
+          showToast('Ficha guardada en Supabase ✓');
+        } else {
+          const result = await apiFetch('/fichas', 'POST', {
+            dni: currentPatient.dni,
+            fecha_entrevista: document.getElementById('f-fecha').value,
+            ...datos_json,
+          });
+          showToast(result !== null ? 'Ficha guardada ✓' : 'Error al guardar ficha', result !== null ? 'success' : 'error');
+        }
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      } finally {
+        btn.classList.remove('loading');
+      }
     }
 
     function exportarFichaPDF() {
@@ -3211,16 +3436,44 @@
       const mes = now.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
       document.getElementById('registro-mes').textContent = mes.charAt(0).toUpperCase() + mes.slice(1);
 
-      const data = await apiFetch(`/atenciones?mes=${now.getMonth() + 1}&anio=${now.getFullYear()}`)
-        || DEMO.agenda.map(a => ({ ...a, fecha: todayISO() }));
+      let data = [];
+
+      if (supabase_client && SUPABASE_URL !== 'https://TU_PROYECTO.supabase.co') {
+        const primerDia = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+        const { data: rows } = await supabase_client
+          .from('atenciones')
+          .select('*, pacientes(nombres, apellidos)')
+          .gte('fecha', primerDia)
+          .order('fecha', { ascending: false });
+        if (rows) {
+          data = rows.map(r => {
+            const p = r.pacientes || {};
+            return {
+              paciente: p.apellidos ? `${p.apellidos}, ${p.nombres}` : '–',
+              dni: r.dni_paciente,
+              tipo: r.tipo_cita,
+              fecha: r.fecha,
+              estado: r.estado,
+            };
+          });
+        }
+      } else {
+        const bd = await apiFetch(`/atenciones?mes=${now.getMonth() + 1}&anio=${now.getFullYear()}`);
+        if (bd) data = bd;
+      }
 
       const badges = { 'Atendido': 'badge-green', 'Pendiente': 'badge-amber', 'Programado': 'badge-blue' };
       const tbody = document.getElementById('registro-table-body');
+      if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state" style="padding:30px;">
+      <i class="fas fa-clipboard-list"></i><p>Sin atenciones registradas este mes</p></div></td></tr>`;
+        return;
+      }
       tbody.innerHTML = data.map(a => `<tr>
     <td>${a.paciente || '–'}</td>
     <td style="color:var(--muted);">${a.dni || '–'}</td>
     <td>${a.tipo || a.tipo_cita || '–'}</td>
-    <td>${a.fecha || a.hora || '–'}</td>
+    <td>${a.fecha || '–'}</td>
     <td><span class="badge ${badges[a.estado] || 'badge-blue'}">${a.estado || '–'}</span></td>
     <td><button class="btn btn-outline" style="padding:4px 10px;font-size:11px;"
       onclick="showToast('Abriendo atención...')">Ver</button></td>
@@ -3234,10 +3487,22 @@
       const obs = document.getElementById('aten-obs').value;
       if (!dni || !fecha) { showToast('DNI y fecha son obligatorios', 'error'); return; }
 
-      await apiFetch('/atenciones', 'POST', { dni, fecha, tipo_cita: tipo, observaciones: obs, estado: 'Atendido' });
-      closeModal('modal-atencion');
-      showToast('Atención registrada');
-      loadRegistros();
+      try {
+        if (supabase_client && SUPABASE_URL !== 'https://TU_PROYECTO.supabase.co') {
+          const { error } = await supabase_client.from('atenciones').insert({
+            dni_paciente: dni, fecha, tipo_cita: tipo,
+            observaciones: obs, estado: 'Atendido',
+          });
+          if (error) throw new Error(error.message);
+        } else {
+          await apiFetch('/atenciones', 'POST', { dni, fecha, tipo_cita: tipo, observaciones: obs, estado: 'Atendido' });
+        }
+        closeModal('modal-atencion');
+        showToast('Atención registrada ✓');
+        loadRegistros();
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      }
     }
 
     // ════════════════════════════════════════════════════════════
